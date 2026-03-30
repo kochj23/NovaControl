@@ -1,22 +1,13 @@
 # Xcode
+build/
 DerivedData/
+*.xcarchive
 *.xcuserstate
 xcuserdata/
-*.xcworkspace/xcuserdata/
-build/
-*.ipa
-*.dSYM.zip
-*.dSYM
-
-# macOS
+*.moved-aside
+*.pbxuser
 .DS_Store
-.AppleDouble
-.LSOverride
 
-# Secrets — never commit
-*.p12
-*.cer
-*.mobileprovision
-secrets.json
-credentials.json
-.env
+# Sensitive — never commit
+*.plist.bak
+secrets.*

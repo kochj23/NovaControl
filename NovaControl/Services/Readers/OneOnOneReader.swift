@@ -20,17 +20,29 @@ actor OneOnOneReader {
         return try? decoder.decode(type, from: data)
     }
 
+    // OneOnOne syncs via CloudKit — local JSON files may be empty if the app
+    // hasn't been run recently. Read-only access only; never write to these files.
     func fetchMeetings() -> [Meeting] {
-        return load("meetings.json", as: [Meeting].self) ?? []
+        load("meetings.json", as: [Meeting].self) ?? []
     }
 
     func fetchActionItems() -> [ActionItem] {
-        let meetings = fetchMeetings()
-        return meetings.flatMap { $0.actionItems }
+        fetchMeetings().flatMap { $0.actionItems }
     }
 
     func fetchPeople() -> [Person] {
-        return load("people.json", as: [Person].self) ?? []
+        load("people.json", as: [Person].self) ?? []
+    }
+
+    // Returns true if the OneOnOne data directory exists (app is installed)
+    var isAvailable: Bool {
+        FileManager.default.fileExists(atPath: appSupportDir.path)
+    }
+
+    // Tip for Nova: if meetings are empty, OneOnOne may need to be opened
+    // once to sync its CloudKit data to local JSON files.
+    var syncNote: String {
+        isAvailable ? "Data syncs from CloudKit — open OneOnOne to refresh local cache" : "OneOnOne not installed"
     }
 
     func fetchGoals() -> [Goal] {
