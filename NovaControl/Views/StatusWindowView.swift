@@ -13,6 +13,7 @@ struct StatusWindowView: View {
         case devices     = "Devices"
         case system      = "System"
         case news        = "News"
+        case nova        = "Nova"
     }
 
     var body: some View {
@@ -108,6 +109,7 @@ struct StatusWindowView: View {
             case .devices:     DevicesTab()
             case .system:      SystemTab()
             case .news:        NewsTab()
+            case .nova:        NovaTab()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -485,6 +487,211 @@ struct NewsRow: View {
                 NSWorkspace.shared.open(url)
             }
         }
+    }
+}
+
+// MARK: - Nova Tab
+
+struct NovaTab: View {
+    @EnvironmentObject var data: DataManager
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if let nova = data.novaStatus {
+                // AI Services health row
+                aiServicesSection
+                Divider()
+                // Nova identity
+                novaIdentitySection(nova: nova)
+                Divider()
+                // Cron health grid
+                cronSection(crons: nova.crons)
+            } else {
+                emptyState(icon: "brain.head.profile", text: "Loading Nova status...")
+            }
+        }
+        .padding(.vertical, 8)
+    }
+
+    // MARK: AI Services
+
+    private var aiServicesSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("AI Services")
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .padding(.horizontal, 16)
+                .padding(.top, 6)
+
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())],
+                      spacing: 6) {
+                ForEach(data.aiServices) { svc in
+                    AIServiceBadge(service: svc)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
+        }
+    }
+
+    // MARK: Nova Identity
+
+    private func novaIdentitySection(nova: NovaStatus) -> some View {
+        HStack(spacing: 20) {
+            StatBadge(label: "Model",
+                      value: shortModelName(nova.currentModel),
+                      color: .purple)
+            StatBadge(label: "Memories",
+                      value: nova.memoriesCount > 0 ? "\(nova.memoriesCount)" : "—",
+                      color: nova.memoryServerOnline ? .blue : .secondary)
+            StatBadge(label: "Sessions",
+                      value: "\(nova.activeSessions)",
+                      color: .teal)
+            StatBadge(label: "Gateway",
+                      value: nova.gatewayOnline ? "online" : "offline",
+                      color: nova.gatewayOnline ? .green : .red)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+    }
+
+    // MARK: Cron Grid
+
+    private func cronSection(crons: [NovaCronJob]) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("Cron Jobs")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                Spacer()
+                let errors = crons.filter { $0.status == "error" }.count
+                if errors > 0 {
+                    Text("\(errors) error\(errors == 1 ? "" : "s")")
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.red.opacity(0.15))
+                        .foregroundColor(.red)
+                        .cornerRadius(4)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+
+            if crons.isEmpty {
+                emptyState(icon: "clock", text: "No cron jobs found")
+            } else {
+                // Header row
+                HStack {
+                    Text("Status").frame(width: 50, alignment: .leading)
+                    Text("Job").frame(maxWidth: .infinity, alignment: .leading)
+                    Text("Last").frame(width: 70, alignment: .trailing)
+                    Text("Next").frame(width: 70, alignment: .trailing)
+                }
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 3)
+
+                ForEach(crons) { job in
+                    CronJobRow(job: job)
+                    Divider().padding(.leading, 66)
+                }
+            }
+        }
+    }
+
+    private func shortModelName(_ model: String) -> String {
+        // Strip "openrouter/" prefix and truncate
+        let stripped = model.replacingOccurrences(of: "openrouter/", with: "")
+        if stripped.count > 18 { return String(stripped.suffix(18)) }
+        return stripped
+    }
+}
+
+// MARK: - Cron Job Row
+
+struct CronJobRow: View {
+    let job: NovaCronJob
+
+    var statusColor: Color {
+        switch job.status {
+        case "ok":      return .green
+        case "error":   return .red
+        case "skipped": return .yellow
+        default:        return .secondary
+        }
+    }
+
+    var statusIcon: String {
+        switch job.status {
+        case "ok":      return "checkmark.circle.fill"
+        case "error":   return "xmark.circle.fill"
+        case "skipped": return "minus.circle.fill"
+        default:        return "circle"
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: statusIcon)
+                .foregroundColor(statusColor)
+                .frame(width: 16)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(job.name)
+                    .font(.caption)
+                    .lineLimit(1)
+                Text(job.schedule)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text(job.lastRun)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .frame(width: 70, alignment: .trailing)
+                .lineLimit(1)
+
+            Text(job.nextRun)
+                .font(.caption2)
+                .foregroundColor(job.status == "error" ? .red : .secondary)
+                .frame(width: 70, alignment: .trailing)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 4)
+    }
+}
+
+// MARK: - AI Service Badge
+
+struct AIServiceBadge: View {
+    let service: AIService
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(service.isOnline ? Color.green : Color.red)
+                .frame(width: 7, height: 7)
+                .shadow(color: (service.isOnline ? Color.green : Color.red).opacity(0.5), radius: 2)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(service.name)
+                    .font(.caption2)
+                    .fontWeight(.medium)
+                    .lineLimit(1)
+                Text(service.detail)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(8)
+        .background(Color(NSColor.controlBackgroundColor))
+        .cornerRadius(7)
     }
 }
 

@@ -10,11 +10,14 @@
 		096E0DDECCAD4EB7BFAB5593 /* SystemStatsReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE6CCD454AA2773FB883E74B /* SystemStatsReader.swift */; };
 		0F87BDBFE9FFEBF39187DD18 /* DataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E5C4C76841118DC9CB8E389 /* DataManager.swift */; };
 		1B8D1E48A9573F18932944B6 /* ServiceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3DCDA8C6F876D585F48FEFC /* ServiceModels.swift */; };
+		4742CFE946EC48AFCE72EA11 /* NovaReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 755C33F71A4D361ACF3A01E2 /* NovaReader.swift */; };
 		50F94FD110E839EDE6CA29D8 /* NovaAPIServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A296C3A5EB2693A8AC15C753 /* NovaAPIServer.swift */; };
 		69557E2DD01CE9312C3FB00A /* RsyncReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5C3EE0E08A946C0527A3F81 /* RsyncReader.swift */; };
 		76C84F6941929AB8A7474734 /* OneOnOneReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = E01F37A38EBADAD85E2BC764 /* OneOnOneReader.swift */; };
 		7FE6401696EF19333E3E6BBF /* NewsSummaryReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 411D79BCF4B02EC2F1038FCC /* NewsSummaryReader.swift */; };
+		8D6197314BAEACA145D657D4 /* MLXCodeReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D6D1C4648F18FE85594493B /* MLXCodeReader.swift */; };
 		8FE8D35F447C93F1BEA737D5 /* NovaControlApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60508F126E68C7A5109B2BE2 /* NovaControlApp.swift */; };
+		B3A3181C605DFB17081072CF /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 86F58176921801959333C12F /* IOKit.framework */; };
 		B89C4467B809069A5C0C2832 /* NMAPReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBD791C1FD27ECC9AFA3185F /* NMAPReader.swift */; };
 		E3C88C45BA35DA4CF0B6502B /* StatusWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 939FBBCC25F92AA1ECFE6535 /* StatusWindowView.swift */; };
 /* End PBXBuildFile section */
@@ -22,7 +25,10 @@
 /* Begin PBXFileReference section */
 		0E5C4C76841118DC9CB8E389 /* DataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataManager.swift; sourceTree = "<group>"; };
 		411D79BCF4B02EC2F1038FCC /* NewsSummaryReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewsSummaryReader.swift; sourceTree = "<group>"; };
+		4D6D1C4648F18FE85594493B /* MLXCodeReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLXCodeReader.swift; sourceTree = "<group>"; };
 		60508F126E68C7A5109B2BE2 /* NovaControlApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaControlApp.swift; sourceTree = "<group>"; };
+		755C33F71A4D361ACF3A01E2 /* NovaReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaReader.swift; sourceTree = "<group>"; };
+		86F58176921801959333C12F /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
 		90A30D3290D5F150B5BCAF55 /* NovaControl.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NovaControl.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		939FBBCC25F92AA1ECFE6535 /* StatusWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusWindowView.swift; sourceTree = "<group>"; };
 		A296C3A5EB2693A8AC15C753 /* NovaAPIServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaAPIServer.swift; sourceTree = "<group>"; };
@@ -33,11 +39,23 @@
 		FBD791C1FD27ECC9AFA3185F /* NMAPReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NMAPReader.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFrameworksBuildPhase section */
+		90208C9266516D64F33DB58A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B3A3181C605DFB17081072CF /* IOKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
 /* Begin PBXGroup section */
 		087E2460D802EE693D4B082F = {
 			isa = PBXGroup;
 			children = (
 				5FEE539179D91A594360D822 /* NovaControl */,
+				CC77404338427D5BCB67A91B /* Frameworks */,
 				79995E3E9A6C17FB21415898 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -82,13 +100,23 @@
 		92E100079B61C8AC562D3B10 /* Readers */ = {
 			isa = PBXGroup;
 			children = (
+				4D6D1C4648F18FE85594493B /* MLXCodeReader.swift */,
 				411D79BCF4B02EC2F1038FCC /* NewsSummaryReader.swift */,
 				FBD791C1FD27ECC9AFA3185F /* NMAPReader.swift */,
+				755C33F71A4D361ACF3A01E2 /* NovaReader.swift */,
 				E01F37A38EBADAD85E2BC764 /* OneOnOneReader.swift */,
 				D5C3EE0E08A946C0527A3F81 /* RsyncReader.swift */,
 				CE6CCD454AA2773FB883E74B /* SystemStatsReader.swift */,
 			);
 			path = Readers;
+			sourceTree = "<group>";
+		};
+		CC77404338427D5BCB67A91B /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				86F58176921801959333C12F /* IOKit.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		DD289A468198C60B197DF172 /* Models */ = {
@@ -107,6 +135,7 @@
 			buildConfigurationList = A927251A1E6D5A7E333150B0 /* Build configuration list for PBXNativeTarget "NovaControl" */;
 			buildPhases = (
 				45EB6F4EFCA82437D57F54CF /* Sources */,
+				90208C9266516D64F33DB58A /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -159,10 +188,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				0F87BDBFE9FFEBF39187DD18 /* DataManager.swift in Sources */,
+				8D6197314BAEACA145D657D4 /* MLXCodeReader.swift in Sources */,
 				B89C4467B809069A5C0C2832 /* NMAPReader.swift in Sources */,
 				7FE6401696EF19333E3E6BBF /* NewsSummaryReader.swift in Sources */,
 				50F94FD110E839EDE6CA29D8 /* NovaAPIServer.swift in Sources */,
 				8FE8D35F447C93F1BEA737D5 /* NovaControlApp.swift in Sources */,
+				4742CFE946EC48AFCE72EA11 /* NovaReader.swift in Sources */,
 				76C84F6941929AB8A7474734 /* OneOnOneReader.swift in Sources */,
 				69557E2DD01CE9312C3FB00A /* RsyncReader.swift in Sources */,
 				1B8D1E48A9573F18932944B6 /* ServiceModels.swift in Sources */,

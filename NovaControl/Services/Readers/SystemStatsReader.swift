@@ -1,12 +1,16 @@
 // NovaControl — System Stats Reader
 // Written by Jordan Koch
-// Reads CPU, RAM, and process data directly via sysctl / mach APIs
+// Reads CPU, RAM, disk I/O, and process data via sysctl / mach / IOKit APIs
 
 import Foundation
 import Darwin
+import IOKit
 
 actor SystemStatsReader {
     static let shared = SystemStatsReader()
+
+    // Previous disk sample for delta-based MB/s calculation
+    private var lastDiskSample: (readBytes: UInt64, writeBytes: UInt64, time: Date)?
 
     func fetchStats() -> SystemStats {
         // CPU load via host_cpu_load_info
@@ -46,16 +50,71 @@ actor SystemStatsReader {
         sysctlbyname("kern.boottime", &boottime, &btSize, nil, 0)
         let uptime = Date().timeIntervalSince1970 - Double(boottime.tv_sec)
 
+        // Disk I/O via IOKit
+        let (diskReadMBs, diskWriteMBs) = sampleDiskIO()
+
         return SystemStats(
             cpuUser: cpuUser,
             cpuSystem: cpuSystem,
             memUsedGB: memUsed,
             memTotalGB: memTotal,
-            diskReadMBs: 0,
-            diskWriteMBs: 0,
+            diskReadMBs: diskReadMBs,
+            diskWriteMBs: diskWriteMBs,
             uptime: uptime
         )
     }
+
+    // MARK: - Disk I/O via IOKit
+
+    private func sampleDiskIO() -> (readMBs: Double, writeMBs: Double) {
+        var totalReadBytes: UInt64 = 0
+        var totalWriteBytes: UInt64 = 0
+
+        var iterator: io_iterator_t = 0
+        let matching = IOServiceMatching("IOBlockStorageDriver")
+        guard IOServiceGetMatchingServices(kIOMainPortDefault, matching, &iterator) == KERN_SUCCESS else {
+            return (0, 0)
+        }
+        defer { IOObjectRelease(iterator) }
+
+        var service = IOIteratorNext(iterator)
+        while service != 0 {
+            defer {
+                IOObjectRelease(service)
+                service = IOIteratorNext(iterator)
+            }
+            var propsRef: Unmanaged<CFMutableDictionary>?
+            guard IORegistryEntryCreateCFProperties(service, &propsRef, kCFAllocatorDefault, 0) == KERN_SUCCESS,
+                  let props = propsRef?.takeRetainedValue() as? [String: Any],
+                  let stats = props["Statistics"] as? [String: Any] else { continue }
+
+            totalReadBytes  += (stats["Bytes (Read)"]  as? UInt64) ?? 0
+            totalWriteBytes += (stats["Bytes (Write)"] as? UInt64) ?? 0
+        }
+
+        let now = Date()
+        let mbDivisor = 1_048_576.0
+
+        guard let last = lastDiskSample else {
+            // First sample — store baseline, return 0
+            lastDiskSample = (totalReadBytes, totalWriteBytes, now)
+            return (0, 0)
+        }
+
+        let elapsed = now.timeIntervalSince(last.time)
+        guard elapsed > 0 else { return (0, 0) }
+
+        let readDelta  = totalReadBytes  >= last.readBytes  ? totalReadBytes  - last.readBytes  : 0
+        let writeDelta = totalWriteBytes >= last.writeBytes ? totalWriteBytes - last.writeBytes : 0
+
+        lastDiskSample = (totalReadBytes, totalWriteBytes, now)
+
+        let readMBs  = Double(readDelta)  / mbDivisor / elapsed
+        let writeMBs = Double(writeDelta) / mbDivisor / elapsed
+        return (readMBs, writeMBs)
+    }
+
+    // MARK: - Processes
 
     func fetchProcesses() -> [ProcessInfo] {
         let output = runCommand("/bin/ps", args: ["-eo", "pid,pcpu,pmem,comm,user", "-r"])

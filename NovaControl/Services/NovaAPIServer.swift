@@ -190,9 +190,42 @@ final class NovaAPIServer {
         if method == "GET" && path == "/api/news/breaking" {
             return await handleBreakingNews()
         }
+        if method == "GET" && path == "/api/news/favorites" {
+            return await handleNewsFavorites()
+        }
         if method == "GET" && path.hasPrefix("/api/news/articles/") {
             let category = path.replacingOccurrences(of: "/api/news/articles/", with: "")
             return await handleNewsByCategory(category: category)
+        }
+
+        // OneOnOne goals
+        if method == "GET" && path == "/api/oneonone/goals" {
+            return await handleGoals()
+        }
+
+        // Nova routes
+        if method == "GET" && path == "/api/nova/status" {
+            return await handleNovaStatus()
+        }
+        if method == "GET" && path == "/api/nova/memory" {
+            return await handleNovaMemory()
+        }
+        if method == "GET" && path == "/api/nova/crons" {
+            return await handleNovaCrons()
+        }
+
+        // AI services
+        if method == "GET" && path == "/api/ai/status" {
+            return await handleAIStatus()
+        }
+
+        // MLXCode proxy
+        if method == "GET" && path == "/api/mlxcode/status" {
+            return await handleMLXCodeStatus()
+        }
+        if method == "GET" && path.hasPrefix("/api/mlxcode/") {
+            let proxied = path.replacingOccurrences(of: "/api/mlxcode", with: "")
+            return await handleMLXCodeProxy(path: proxied)
         }
 
         return (404, ["error": "Route not found", "path": path])
@@ -315,9 +348,82 @@ final class NovaAPIServer {
         return (200, encodable(articles))
     }
 
+    private func handleNewsFavorites() async -> (Int, Any) {
+        let articles = await NewsSummaryReader.shared.fetchFavorites()
+        return (200, encodable(articles))
+    }
+
     private func handleNewsByCategory(category: String) async -> (Int, Any) {
         let articles = await NewsSummaryReader.shared.fetchByCategory(category)
         return (200, encodable(articles))
+    }
+
+    private func handleGoals() async -> (Int, Any) {
+        let goals = await OneOnOneReader.shared.fetchGoals()
+        return (200, encodable(goals))
+    }
+
+    // MARK: - Nova Handlers
+
+    private func handleNovaStatus() async -> (Int, Any) {
+        let status = await NovaReader.shared.fetchStatus()
+        return (200, encodable(status))
+    }
+
+    private func handleNovaMemory() async -> (Int, Any) {
+        guard let url = URL(string: "http://127.0.0.1:18790/stats") else {
+            return (503, ["error": "memory server unreachable"])
+        }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 2.0
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              let http = response as? HTTPURLResponse, http.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) else {
+            // Fall back to health endpoint
+            if let url2 = URL(string: "http://127.0.0.1:18790/health"),
+               let (data2, _) = try? await URLSession.shared.data(from: url2),
+               let json2 = try? JSONSerialization.jsonObject(with: data2) {
+                return (200, json2)
+            }
+            return (503, ["error": "memory server unreachable"])
+        }
+        return (http.statusCode, json)
+    }
+
+    private func handleNovaCrons() async -> (Int, Any) {
+        let crons = await NovaReader.shared.fetchCrons()
+        return (200, encodable(crons))
+    }
+
+    // MARK: - AI Services Handler
+
+    private func handleAIStatus() async -> (Int, Any) {
+        let services = await NovaReader.shared.fetchAIServices()
+        let serviceDicts = services.map { svc -> [String: Any] in
+            ["id": svc.id, "name": svc.name, "port": svc.port,
+             "online": svc.isOnline, "detail": svc.detail]
+        }
+        let onlineCount = services.filter { $0.isOnline }.count
+        return (200, [
+            "services": serviceDicts,
+            "onlineCount": onlineCount,
+            "totalCount": services.count
+        ])
+    }
+
+    // MARK: - MLXCode Handlers
+
+    private func handleMLXCodeStatus() async -> (Int, Any) {
+        let info = await MLXCodeReader.shared.fetchStatus()
+        guard let info = info else {
+            return (503, ["error": "MLXCode unreachable", "port": 37422])
+        }
+        return (200, encodable(info))
+    }
+
+    private func handleMLXCodeProxy(path: String) async -> (Int, Any) {
+        let (status, body) = await MLXCodeReader.shared.proxy(path: path)
+        return (status, body)
     }
 
     // MARK: - Response Helpers

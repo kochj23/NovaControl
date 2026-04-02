@@ -10,6 +10,8 @@ targets:
     type: application
     platform: macOS
     sources: [NovaControl]
+    dependencies:
+      - sdk: IOKit.framework
     settings:
       PRODUCT_NAME: NovaControl
       BUNDLE_IDENTIFIER: net.digitalnoise.NovaControl

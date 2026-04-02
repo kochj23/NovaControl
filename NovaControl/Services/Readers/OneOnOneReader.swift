@@ -16,7 +16,19 @@ actor OneOnOneReader {
         let url = appSupportDir.appendingPathComponent(filename)
         guard let data = try? Data(contentsOf: url) else { return nil }
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        // OneOnOne stores dates as Apple reference date (seconds since 2001-01-01),
+        // not ISO 8601 strings. Handle both formats gracefully.
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            if let interval = try? container.decode(Double.self) {
+                return Date(timeIntervalSinceReferenceDate: interval)
+            }
+            let string = try container.decode(String.self)
+            let iso = ISO8601DateFormatter()
+            if let date = iso.date(from: string) { return date }
+            throw DecodingError.dataCorruptedError(in: container,
+                debugDescription: "Cannot decode date from '\(string)'")
+        }
         return try? decoder.decode(type, from: data)
     }
 

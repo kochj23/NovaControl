@@ -33,15 +33,23 @@ struct ServiceInfo: Identifiable, Codable {
 
 struct Meeting: Identifiable, Codable {
     let id: UUID
+    let title: String
     let date: Date
     let attendeeNames: [String]
     let notes: String
     let actionItems: [ActionItem]
     let summary: String?
 
-    init(id: UUID = UUID(), date: Date = Date(), attendeeNames: [String] = [],
+    // OneOnOne JSON uses "attendees" (array of UUID strings) and omits "summary"
+    enum CodingKeys: String, CodingKey {
+        case id, title, date, notes, actionItems, summary
+        case attendeeNames = "attendees"
+    }
+
+    init(id: UUID = UUID(), title: String = "", date: Date = Date(), attendeeNames: [String] = [],
          notes: String = "", actionItems: [ActionItem] = [], summary: String? = nil) {
         self.id = id
+        self.title = title
         self.date = date
         self.attendeeNames = attendeeNames
         self.notes = notes
@@ -246,6 +254,43 @@ struct NewsArticle: Identifiable, Codable {
         self.isFavorite = isFavorite
     }
 }
+
+// MARK: - Nova / AI Models
+
+struct NovaCronJob: Identifiable, Codable {
+    let id: String
+    let name: String
+    let schedule: String
+    let nextRun: String
+    let lastRun: String
+    let status: String   // "ok", "error", "skipped"
+    let target: String
+}
+
+struct NovaStatus: Codable {
+    let gatewayOnline: Bool
+    let memoryServerOnline: Bool
+    let memoriesCount: Int
+    let currentModel: String
+    let activeSessions: Int
+    let crons: [NovaCronJob]
+}
+
+struct AIService: Identifiable, Codable {
+    let id: String
+    let name: String
+    let port: Int
+    let isOnline: Bool
+    let detail: String
+}
+
+struct MLXCodeInfo: Codable {
+    let status: String
+    let activeModel: String?
+    let queueDepth: Int?
+}
+
+// MARK: - News Categories
 
 enum NewsCategory: String, CaseIterable, Codable {
     case general

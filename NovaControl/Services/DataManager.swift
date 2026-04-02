@@ -9,16 +9,33 @@ import Combine
 class DataManager: ObservableObject {
     static let shared = DataManager()
 
+    // OneOnOne
     @Published var meetings: [Meeting] = []
     @Published var actionItems: [ActionItem] = []
     @Published var people: [Person] = []
+    @Published var goals: [Goal] = []
+
+    // NMAPScanner
     @Published var devices: [ScannedDevice] = []
     @Published var threats: [ThreatFinding] = []
+
+    // RsyncGUI
     @Published var syncJobs: [SyncJob] = []
     @Published var syncHistory: [ExecutionHistoryEntry] = []
+
+    // System
     @Published var systemStats: SystemStats?
     @Published var topProcesses: [ProcessInfo] = []
+
+    // News
     @Published var breakingNews: [NewsArticle] = []
+    @Published var newsFavorites: [NewsArticle] = []
+
+    // Nova / AI
+    @Published var novaStatus: NovaStatus?
+    @Published var aiServices: [AIService] = []
+    @Published var mlxCodeInfo: MLXCodeInfo?
+
     @Published var serviceStatuses: [ServiceInfo] = []
     @Published var lastRefresh: Date = Date()
 
@@ -35,32 +52,43 @@ class DataManager: ObservableObject {
 
     func refresh() {
         Task {
-            async let m = OneOnOneReader.shared.fetchMeetings()
-            async let a = OneOnOneReader.shared.fetchActionItems()
-            async let p = OneOnOneReader.shared.fetchPeople()
-            async let d = NMAPReader.shared.fetchDevices()
-            async let t = NMAPReader.shared.fetchThreats()
-            async let j = RsyncReader.shared.fetchJobs()
-            async let h = RsyncReader.shared.fetchHistory()
+            async let m     = OneOnOneReader.shared.fetchMeetings()
+            async let a     = OneOnOneReader.shared.fetchActionItems()
+            async let p     = OneOnOneReader.shared.fetchPeople()
+            async let g     = OneOnOneReader.shared.fetchGoals()
+            async let d     = NMAPReader.shared.fetchDevices()
+            async let t     = NMAPReader.shared.fetchThreats()
+            async let j     = RsyncReader.shared.fetchJobs()
+            async let h     = RsyncReader.shared.fetchHistory()
             async let stats = SystemStatsReader.shared.fetchStats()
             async let procs = SystemStatsReader.shared.fetchProcesses()
-            async let news = NewsSummaryReader.shared.fetchBreaking()
+            async let news  = NewsSummaryReader.shared.fetchBreaking()
+            async let favs  = NewsSummaryReader.shared.fetchFavorites()
+            async let nova  = NovaReader.shared.fetchStatus()
+            async let ai    = NovaReader.shared.fetchAIServices()
+            async let mlx   = MLXCodeReader.shared.fetchStatus()
 
-            let (meetings, actions, persons, devs, threats, jobs, history, sysStats, processes, articles) =
-                await (m, a, p, d, t, j, h, stats, procs, news)
+            let (meetings, actions, persons, goals, devs, threats, jobs, history,
+                 sysStats, processes, articles, favorites, novaStatus, aiServices, mlxInfo) =
+                await (m, a, p, g, d, t, j, h, stats, procs, news, favs, nova, ai, mlx)
 
             await MainActor.run {
-                self.meetings = meetings
-                self.actionItems = actions
-                self.people = persons
-                self.devices = devs
-                self.threats = threats
-                self.syncJobs = jobs
-                self.syncHistory = history
-                self.systemStats = sysStats
-                self.topProcesses = processes
-                self.breakingNews = articles
-                self.lastRefresh = Date()
+                self.meetings      = meetings
+                self.actionItems   = actions
+                self.people        = persons
+                self.goals         = goals
+                self.devices       = devs
+                self.threats       = threats
+                self.syncJobs      = jobs
+                self.syncHistory   = history
+                self.systemStats   = sysStats
+                self.topProcesses  = processes
+                self.breakingNews  = articles
+                self.newsFavorites = favorites
+                self.novaStatus    = novaStatus
+                self.aiServices    = aiServices
+                self.mlxCodeInfo   = mlxInfo
+                self.lastRefresh   = Date()
                 self.updateServiceStatuses()
             }
         }
@@ -70,7 +98,7 @@ class DataManager: ObservableObject {
         let cpu = systemStats.map { Int($0.cpuUser + $0.cpuSystem) }
         let ram = systemStats.map { $0.memUsedGB }
 
-        serviceStatuses = [
+        var statuses: [ServiceInfo] = [
             ServiceInfo(
                 id: "oneonone",
                 name: "OneOnOne",
@@ -107,6 +135,21 @@ class DataManager: ObservableObject {
                 summary: "\(breakingNews.count) unread stories"
             ),
         ]
+
+        // Nova gateway service card
+        if let nova = novaStatus {
+            statuses.append(ServiceInfo(
+                id: "nova",
+                name: "Nova",
+                oldPort: 18789,
+                status: nova.gatewayOnline ? .online : .offline,
+                summary: nova.gatewayOnline
+                    ? "\(nova.memoriesCount) memories · \(nova.crons.filter { $0.status == "error" }.count) cron errors"
+                    : "gateway offline"
+            ))
+        }
+
+        serviceStatuses = statuses
     }
 
     /// Look up person name by ID
