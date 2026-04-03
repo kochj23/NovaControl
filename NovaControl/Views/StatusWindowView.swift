@@ -14,6 +14,7 @@ struct StatusWindowView: View {
         case system      = "System"
         case news        = "News"
         case nova        = "Nova"
+        case health      = "Health"
     }
 
     var body: some View {
@@ -110,6 +111,7 @@ struct StatusWindowView: View {
             case .system:      SystemTab()
             case .news:        NewsTab()
             case .nova:        NovaTab()
+            case .health:      HealthTab()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -692,6 +694,184 @@ struct AIServiceBadge: View {
         .padding(8)
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(7)
+    }
+}
+
+// MARK: - Health Tab
+
+struct HealthTab: View {
+    @EnvironmentObject var data: DataManager
+
+    // MARK: Derived health signals
+
+    private var overallStatus: ServiceStatus {
+        if data.serviceStatuses.contains(where: { $0.status == .offline })  { return .offline  }
+        if data.serviceStatuses.contains(where: { $0.status == .degraded }) { return .degraded }
+        return .online
+    }
+
+    private var systemPressureLabel: String {
+        guard let s = data.systemStats else { return "unknown" }
+        let cpu = s.cpuUser + s.cpuSystem
+        let ram = s.memUsedGB / max(s.memTotalGB, 1)
+        if cpu > 80 || ram > 0.90 { return "critical" }
+        if cpu > 50 || ram > 0.75 { return "elevated" }
+        return "normal"
+    }
+
+    private var systemPressureColor: Color {
+        switch systemPressureLabel {
+        case "critical": return .red
+        case "elevated": return .orange
+        default:         return .green
+        }
+    }
+
+    private var openActionCount: Int { data.actionItems.filter { !$0.isCompleted }.count }
+    private var cronErrorCount: Int  { data.novaStatus?.crons.filter { $0.status == "error" }.count ?? 0 }
+    private var threatCount: Int     { data.threats.count }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            overallBanner
+            Divider()
+            serviceTrafficLights
+            Divider()
+            systemPressureRow
+            if threatCount > 0 || openActionCount > 0 || cronErrorCount > 0 {
+                Divider()
+                attentionRequired
+            }
+        }
+        .padding(.vertical, 8)
+    }
+
+    // MARK: Overall Banner
+
+    private var overallBanner: some View {
+        let (label, color, icon): (String, Color, String) = {
+            switch overallStatus {
+            case .online:   return ("All Systems Operational", .green,  "checkmark.seal.fill")
+            case .degraded: return ("Degraded — Attention needed", .orange, "exclamationmark.triangle.fill")
+            case .offline:  return ("Outage — Service(s) down",    .red,    "xmark.circle.fill")
+            }
+        }()
+        return HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundColor(color)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(label)
+                    .font(.subheadline).fontWeight(.semibold)
+                    .foregroundColor(color)
+                Text("System pressure: \(systemPressureLabel) · refreshed \(data.lastRefresh, style: .relative) ago")
+                    .font(.caption).foregroundColor(.secondary)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(color.opacity(0.07))
+    }
+
+    // MARK: Per-Service Traffic Lights
+
+    private var serviceTrafficLights: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Services")
+                .font(.caption).fontWeight(.semibold).foregroundColor(.secondary)
+                .padding(.horizontal, 16).padding(.top, 8)
+            ForEach(data.serviceStatuses) { svc in
+                HStack(spacing: 10) {
+                    trafficLight(svc.status)
+                    Text(svc.name)
+                        .font(.subheadline)
+                    Spacer()
+                    Text(svc.summary)
+                        .font(.caption).foregroundColor(.secondary).lineLimit(1)
+                }
+                .padding(.horizontal, 16).padding(.vertical, 4)
+                Divider().padding(.leading, 42)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func trafficLight(_ status: ServiceStatus) -> some View {
+        ZStack {
+            Circle().fill(Color.gray.opacity(0.15)).frame(width: 22, height: 22)
+            Circle().fill(statusColor(status)).frame(width: 12, height: 12)
+                .shadow(color: statusColor(status).opacity(0.7), radius: 4)
+        }
+    }
+
+    private func statusColor(_ s: ServiceStatus) -> Color {
+        switch s { case .online: return .green; case .degraded: return .orange; case .offline: return .red }
+    }
+
+    // MARK: System Pressure
+
+    private var systemPressureRow: some View {
+        HStack(spacing: 16) {
+            if let s = data.systemStats {
+                pressureCell(label: "CPU",
+                             value: "\(Int(s.cpuUser + s.cpuSystem))%",
+                             color: s.cpuUser + s.cpuSystem > 80 ? .red : s.cpuUser + s.cpuSystem > 50 ? .orange : .green)
+                pressureCell(label: "RAM",
+                             value: String(format: "%.0f%%", (s.memUsedGB / max(s.memTotalGB, 1)) * 100),
+                             color: s.memUsedGB / max(s.memTotalGB, 1) > 0.85 ? .red :
+                                    s.memUsedGB / max(s.memTotalGB, 1) > 0.65 ? .orange : .green)
+                pressureCell(label: "Disk R",
+                             value: String(format: "%.1f MB/s", s.diskReadMBs),  color: .blue)
+                pressureCell(label: "Disk W",
+                             value: String(format: "%.1f MB/s", s.diskWriteMBs), color: .blue)
+            } else {
+                Text("System stats loading…").font(.caption).foregroundColor(.secondary)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 16).padding(.vertical, 10)
+    }
+
+    private func pressureCell(label: String, value: String, color: Color) -> some View {
+        VStack(spacing: 2) {
+            Text(label).font(.caption2).foregroundColor(.secondary)
+            Text(value).font(.caption).fontWeight(.semibold).foregroundColor(color)
+        }
+        .padding(.horizontal, 10).padding(.vertical, 6)
+        .background(color.opacity(0.08))
+        .cornerRadius(7)
+    }
+
+    // MARK: Attention Required
+
+    private var attentionRequired: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Needs Attention")
+                .font(.caption).fontWeight(.semibold).foregroundColor(.secondary)
+                .padding(.horizontal, 16).padding(.top, 8)
+            if openActionCount > 0 {
+                attentionRow(icon: "checklist", color: .orange,
+                             text: "\(openActionCount) open action item\(openActionCount == 1 ? "" : "s")")
+            }
+            if cronErrorCount > 0 {
+                attentionRow(icon: "exclamationmark.arrow.circlepath", color: .red,
+                             text: "\(cronErrorCount) Nova cron job\(cronErrorCount == 1 ? "" : "s") in error state")
+            }
+            if threatCount > 0 {
+                attentionRow(icon: "shield.slash", color: .red,
+                             text: "\(threatCount) security threat\(threatCount == 1 ? "" : "s") detected")
+            }
+        }
+        .padding(.bottom, 8)
+    }
+
+    private func attentionRow(icon: String, color: Color, text: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon).foregroundColor(color).frame(width: 20)
+            Text(text).font(.subheadline)
+        }
+        .padding(.horizontal, 16).padding(.vertical, 4)
     }
 }
 

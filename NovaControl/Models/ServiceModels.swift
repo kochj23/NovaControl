@@ -290,6 +290,43 @@ struct MLXCodeInfo: Codable {
     let queueDepth: Int?
 }
 
+// MARK: - Topology
+
+struct TopologyConnection: Codable {
+    let from: String
+    let to: String
+    let type: String       // "data_sync", "device_health", "ai_inference", "notifications", "memory"
+    let active: Bool       // true if both endpoints are currently reachable
+}
+
+// MARK: - Manual Health Status
+
+struct ManualHealthInput: Codable {
+    let memoryPressure: String?  // "normal", "high", "critical"
+    let notes: String?
+}
+
+struct HealthStatusRecord: Codable {
+    let memoryPressure: String
+    let notes: String
+    let recordedAt: Date
+}
+
+// MARK: - Goals Insights
+
+struct GoalStatusBreakdown: Codable {
+    let status: String
+    let count: Int
+}
+
+struct GoalInsights: Codable {
+    let totalGoals: Int
+    let completionRate: Double
+    let statusBreakdown: [GoalStatusBreakdown]
+    let recentlyCompleted: [Goal]
+    let healthCorrelation: String?
+}
+
 // MARK: - News Categories
 
 enum NewsCategory: String, CaseIterable, Codable {

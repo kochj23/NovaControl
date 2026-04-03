@@ -19,6 +19,7 @@
 		8FE8D35F447C93F1BEA737D5 /* NovaControlApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60508F126E68C7A5109B2BE2 /* NovaControlApp.swift */; };
 		B3A3181C605DFB17081072CF /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 86F58176921801959333C12F /* IOKit.framework */; };
 		B89C4467B809069A5C0C2832 /* NMAPReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBD791C1FD27ECC9AFA3185F /* NMAPReader.swift */; };
+		D70E7C85821F85491FD6B54C /* WorkflowEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E9F0F3EC7774CB1146964F0 /* WorkflowEngine.swift */; };
 		E3C88C45BA35DA4CF0B6502B /* StatusWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 939FBBCC25F92AA1ECFE6535 /* StatusWindowView.swift */; };
 /* End PBXBuildFile section */
 
@@ -29,6 +30,7 @@
 		60508F126E68C7A5109B2BE2 /* NovaControlApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaControlApp.swift; sourceTree = "<group>"; };
 		755C33F71A4D361ACF3A01E2 /* NovaReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaReader.swift; sourceTree = "<group>"; };
 		86F58176921801959333C12F /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
+		8E9F0F3EC7774CB1146964F0 /* WorkflowEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowEngine.swift; sourceTree = "<group>"; };
 		90A30D3290D5F150B5BCAF55 /* NovaControl.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NovaControl.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		939FBBCC25F92AA1ECFE6535 /* StatusWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusWindowView.swift; sourceTree = "<group>"; };
 		A296C3A5EB2693A8AC15C753 /* NovaAPIServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaAPIServer.swift; sourceTree = "<group>"; };
@@ -65,6 +67,7 @@
 			children = (
 				0E5C4C76841118DC9CB8E389 /* DataManager.swift */,
 				A296C3A5EB2693A8AC15C753 /* NovaAPIServer.swift */,
+				8E9F0F3EC7774CB1146964F0 /* WorkflowEngine.swift */,
 				92E100079B61C8AC562D3B10 /* Readers */,
 			);
 			path = Services;
@@ -199,6 +202,7 @@
 				1B8D1E48A9573F18932944B6 /* ServiceModels.swift in Sources */,
 				E3C88C45BA35DA4CF0B6502B /* StatusWindowView.swift in Sources */,
 				096E0DDECCAD4EB7BFAB5593 /* SystemStatsReader.swift in Sources */,
+				D70E7C85821F85491FD6B54C /* WorkflowEngine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -270,6 +274,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = QRRCB8HB3W;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
@@ -278,6 +283,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = net.digitalnoise.NovaControl;
 				PRODUCT_NAME = NovaControl;
 				SDKROOT = macosx;
@@ -356,6 +362,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = QRRCB8HB3W;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
@@ -364,6 +371,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = net.digitalnoise.NovaControl;
 				PRODUCT_NAME = NovaControl;
 				SDKROOT = macosx;
