@@ -737,6 +737,8 @@ struct HealthTab: View {
             Divider()
             serviceTrafficLights
             Divider()
+            localLLMSection
+            Divider()
             systemPressureRow
             if threatCount > 0 || openActionCount > 0 || cronErrorCount > 0 {
                 Divider()
@@ -841,6 +843,76 @@ struct HealthTab: View {
         .padding(.horizontal, 10).padding(.vertical, 6)
         .background(color.opacity(0.08))
         .cornerRadius(7)
+    }
+
+    // MARK: Local LLMs
+
+    private var localLLMSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text("Local LLMs")
+                    .font(.caption).fontWeight(.semibold).foregroundColor(.secondary)
+                Spacer()
+                let loaded = data.localLLMs.filter(\.isLoaded).count
+                let total = data.localLLMs.count
+                if total > 0 {
+                    Text("\(loaded)/\(total) loaded")
+                        .font(.caption2)
+                        .foregroundColor(loaded > 0 ? .green : .secondary)
+                }
+            }
+            .padding(.horizontal, 16).padding(.top, 8)
+
+            if data.localLLMs.isEmpty {
+                HStack(spacing: 6) {
+                    Image(systemName: "cpu").foregroundColor(.secondary)
+                    Text("No local models detected")
+                        .font(.caption).foregroundColor(.secondary)
+                }
+                .padding(.horizontal, 16).padding(.vertical, 4)
+            } else {
+                ForEach(data.localLLMs) { llm in
+                    HStack(spacing: 10) {
+                        ZStack {
+                            Circle().fill(Color.gray.opacity(0.15)).frame(width: 22, height: 22)
+                            Circle().fill(llm.isLoaded ? Color.green : (llm.isAvailable ? Color.gray : Color.red))
+                                .frame(width: 12, height: 12)
+                                .shadow(color: (llm.isLoaded ? Color.green : Color.clear).opacity(0.7), radius: 4)
+                        }
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(llm.name)
+                                .font(.caption)
+                                .fontWeight(llm.isLoaded ? .semibold : .regular)
+                                .lineLimit(1)
+                            HStack(spacing: 4) {
+                                Text(llm.backend.uppercased())
+                                    .font(.system(size: 8, weight: .bold))
+                                    .padding(.horizontal, 4).padding(.vertical, 1)
+                                    .background(llm.backend == "mlx" ? Color.purple.opacity(0.15) : Color.blue.opacity(0.15))
+                                    .foregroundColor(llm.backend == "mlx" ? .purple : .blue)
+                                    .cornerRadius(3)
+                                Text(llm.detail)
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                            }
+                        }
+                        Spacer()
+                        if let size = llm.sizeGB {
+                            Text(String(format: "%.1fGB", size))
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        Text(llm.isLoaded ? "loaded" : "idle")
+                            .font(.caption2)
+                            .foregroundColor(llm.isLoaded ? .green : .secondary)
+                    }
+                    .padding(.horizontal, 16).padding(.vertical, 3)
+                    Divider().padding(.leading, 42)
+                }
+            }
+        }
+        .padding(.bottom, 4)
     }
 
     // MARK: Attention Required

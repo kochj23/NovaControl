@@ -266,6 +266,9 @@ final class NovaAPIServer {
         if method == "GET" && path == "/api/ai/status" {
             return await handleAIStatus()
         }
+        if method == "GET" && path == "/api/ai/llms" {
+            return await handleLocalLLMs()
+        }
 
         // MLXCode proxy
         if method == "GET" && path == "/api/mlxcode/status" {
@@ -502,6 +505,20 @@ final class NovaAPIServer {
             "onlineCount": onlineCount,
             "totalCount": services.count
         ])
+    }
+
+    private func handleLocalLLMs() async -> (Int, Any) {
+        let llms = await NovaReader.shared.fetchLocalLLMs()
+        let dicts = llms.map { llm -> [String: Any] in
+            var d: [String: Any] = [
+                "id": llm.id, "name": llm.name, "backend": llm.backend,
+                "loaded": llm.isLoaded, "available": llm.isAvailable, "detail": llm.detail
+            ]
+            if let size = llm.sizeGB { d["size_gb"] = size }
+            return d
+        }
+        let loaded = llms.filter(\.isLoaded).count
+        return (200, ["models": dicts, "loaded": loaded, "total": llms.count])
     }
 
     // MARK: - MLXCode Handlers

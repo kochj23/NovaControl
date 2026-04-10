@@ -290,6 +290,16 @@ struct MLXCodeInfo: Codable {
     let queueDepth: Int?
 }
 
+struct LocalLLM: Identifiable, Codable {
+    let id: String          // model name
+    let name: String        // display name
+    let backend: String     // "ollama" or "mlx"
+    let isLoaded: Bool      // currently in memory
+    let isAvailable: Bool   // exists on disk
+    let sizeGB: Double?     // model size
+    let detail: String      // extra info (parameter count, quantization, etc.)
+}
+
 // MARK: - Topology
 
 struct TopologyConnection: Codable {

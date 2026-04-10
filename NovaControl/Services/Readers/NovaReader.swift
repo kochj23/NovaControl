@@ -133,11 +133,13 @@ actor NovaReader {
 
     func fetchAIServices() async -> [AIService] {
         let services: [(id: String, name: String, port: Int, path: String)] = [
-            ("openclaw",  "OpenClaw Gateway",    18789, "/health"),
-            ("memory",    "Nova Memory Server",  18790, "/health"),
-            ("ollama",    "Ollama",              11434, "/api/tags"),
-            ("swarmui",   "SwarmUI",              7801, "/API/Trex"),
-            ("comfyui",   "ComfyUI",              7821, "/system_stats"),
+            ("openclaw",    "OpenClaw Gateway",     18789, "/health"),
+            ("memory",      "Nova Memory Server",   18790, "/health"),
+            ("memory_srch", "Memory /search",       18790, "/search?q=test&n=1"),
+            ("ollama",      "Ollama",               11434, "/api/tags"),
+            ("novanextgen", "Nova-NextGen",         34750, "/api/ai/backends"),
+            ("swarmui",     "SwarmUI",               7801, "/API/Trex"),
+            ("comfyui",     "ComfyUI",               7821, "/system_stats"),
         ]
 
         return await withTaskGroup(of: AIService.self) { group in
@@ -156,9 +158,19 @@ actor NovaReader {
                         var detail = online ? "online" : "http \(statusCode)"
                         // Enrich detail for known services
                         if svc.id == "memory", online,
+                           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                            let count = json["count"] as? Int ?? 0
+                            let queue = json["queue_length"] as? Int ?? 0
+                            detail = "\(count) memories · queue: \(queue)"
+                        }
+                        if svc.id == "memory_srch" {
+                            detail = online ? "available" : "unavailable"
+                        }
+                        if svc.id == "novanextgen", online,
                            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                           let count = json["count"] as? Int {
-                            detail = "\(count) memories"
+                           let backends = json["backends"] as? [[String: Any]] {
+                            let activeCount = backends.filter { $0["available"] as? Bool == true }.count
+                            detail = "\(activeCount)/\(backends.count) backends active"
                         }
                         if svc.id == "ollama", online,
                            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -176,6 +188,102 @@ actor NovaReader {
             var result: [AIService] = []
             for await svc in group { result.append(svc) }
             return result.sorted { $0.name < $1.name }
+        }
+    }
+
+    // MARK: - Local LLM health
+
+    func fetchLocalLLMs() async -> [LocalLLM] {
+        async let ollamaResult = fetchOllamaLLMs()
+        async let mlxResult    = fetchMLXLLM()
+
+        let (ollamaModels, mlxModels) = await (ollamaResult, mlxResult)
+        return (ollamaModels + mlxModels).sorted { $0.name < $1.name }
+    }
+
+    private func fetchOllamaLLMs() async -> [LocalLLM] {
+        let tagsURL = URL(string: "http://127.0.0.1:11434/api/tags")!
+        let psURL   = URL(string: "http://127.0.0.1:11434/api/ps")!
+
+        // Fetch available models
+        var tagsRequest = URLRequest(url: tagsURL)
+        tagsRequest.timeoutInterval = 3
+        var psRequest = URLRequest(url: psURL)
+        psRequest.timeoutInterval = 3
+
+        var available: [[String: Any]] = []
+        var running: Set<String> = []
+
+        // Get all available models
+        if let (data, resp) = try? await URLSession.shared.data(for: tagsRequest),
+           let http = resp as? HTTPURLResponse, http.statusCode == 200,
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let models = json["models"] as? [[String: Any]] {
+            available = models
+        }
+
+        // Get currently loaded/running models
+        if let (data, resp) = try? await URLSession.shared.data(for: psRequest),
+           let http = resp as? HTTPURLResponse, http.statusCode == 200,
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let models = json["models"] as? [[String: Any]] {
+            for m in models {
+                if let name = m["name"] as? String {
+                    running.insert(name)
+                }
+            }
+        }
+
+        return available.compactMap { model -> LocalLLM? in
+            guard let name = model["name"] as? String else { return nil }
+            let sizeBytes = model["size"] as? Double ?? 0
+            let sizeGB = sizeBytes / 1_073_741_824
+
+            // Extract detail from model info
+            var details: [String] = []
+            if let detail = model["details"] as? [String: Any] {
+                if let family = detail["family"] as? String { details.append(family) }
+                if let params = detail["parameter_size"] as? String { details.append(params) }
+                if let quant = detail["quantization_level"] as? String { details.append(quant) }
+            }
+
+            return LocalLLM(
+                id: name,
+                name: name,
+                backend: "ollama",
+                isLoaded: running.contains(name),
+                isAvailable: true,
+                sizeGB: sizeGB > 0 ? sizeGB : nil,
+                detail: details.isEmpty ? "ollama" : details.joined(separator: " · ")
+            )
+        }
+    }
+
+    private func fetchMLXLLM() async -> [LocalLLM] {
+        let url = URL(string: "http://127.0.0.1:5050/v1/models")!
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 3
+
+        guard let (data, resp) = try? await URLSession.shared.data(for: request),
+              let http = resp as? HTTPURLResponse, http.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let models = json["data"] as? [[String: Any]] else {
+            // Try a simple health check — if server is up but no /v1/models, show as single entry
+            let healthURL = URL(string: "http://127.0.0.1:5050/health")!
+            var healthReq = URLRequest(url: healthURL)
+            healthReq.timeoutInterval = 2
+            if let (_, resp) = try? await URLSession.shared.data(for: healthReq),
+               let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) {
+                return [LocalLLM(id: "mlx-server", name: "MLX Server", backend: "mlx",
+                                 isLoaded: true, isAvailable: true, sizeGB: nil, detail: "running")]
+            }
+            return []
+        }
+
+        return models.compactMap { m -> LocalLLM? in
+            guard let id = m["id"] as? String else { return nil }
+            return LocalLLM(id: "mlx-\(id)", name: id, backend: "mlx",
+                            isLoaded: true, isAvailable: true, sizeGB: nil, detail: "mlx")
         }
     }
 

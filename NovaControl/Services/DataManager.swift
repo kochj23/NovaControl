@@ -35,6 +35,7 @@ class DataManager: ObservableObject {
     @Published var novaStatus: NovaStatus?
     @Published var aiServices: [AIService] = []
     @Published var mlxCodeInfo: MLXCodeInfo?
+    @Published var localLLMs: [LocalLLM] = []
 
     @Published var serviceStatuses: [ServiceInfo] = []
     @Published var lastRefresh: Date = Date()
@@ -67,10 +68,11 @@ class DataManager: ObservableObject {
             async let nova  = NovaReader.shared.fetchStatus()
             async let ai    = NovaReader.shared.fetchAIServices()
             async let mlx   = MLXCodeReader.shared.fetchStatus()
+            async let llms  = NovaReader.shared.fetchLocalLLMs()
 
             let (meetings, actions, persons, goals, devs, threats, jobs, history,
-                 sysStats, processes, articles, favorites, novaStatus, aiServices, mlxInfo) =
-                await (m, a, p, g, d, t, j, h, stats, procs, news, favs, nova, ai, mlx)
+                 sysStats, processes, articles, favorites, novaStatus, aiServices, mlxInfo, localLLMs) =
+                await (m, a, p, g, d, t, j, h, stats, procs, news, favs, nova, ai, mlx, llms)
 
             await MainActor.run {
                 self.meetings      = meetings
@@ -88,6 +90,7 @@ class DataManager: ObservableObject {
                 self.novaStatus    = novaStatus
                 self.aiServices    = aiServices
                 self.mlxCodeInfo   = mlxInfo
+                self.localLLMs     = localLLMs
                 self.lastRefresh   = Date()
                 self.updateServiceStatuses()
             }

@@ -246,7 +246,7 @@ final class WorkflowEngine {
             let script  = rawScript.replacingOccurrences(of: "~", with: NSHomeDirectory())
             let to      = step.config["to"] ?? ""
             guard !to.isEmpty, !to.hasPrefix("{{") else {
-                log("sendEmail: 'to' not configured in workflow step config")
+                NSLog("[WorkflowEngine] sendEmail: 'to' not configured in workflow step config")
                 return StepResult(ok: false, output: "No 'to' address configured")
             }
             let subject = renderTemplate(step.config["subjectTemplate"] ?? "Workflow: \(workflowName)", context: context)
