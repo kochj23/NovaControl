@@ -287,6 +287,77 @@ actor NovaReader {
         }
     }
 
+    // MARK: - Subsystem Control
+
+    private let novaServices = NSHomeDirectory() + "/.openclaw/scripts/nova-services.sh"
+
+    func startAllServices() async -> String {
+        return runCommand(novaServices, args: ["start"])
+    }
+
+    func stopAllServices() async -> String {
+        return runCommand(novaServices, args: ["stop"])
+    }
+
+    func restartAllServices() async -> String {
+        return runCommand(novaServices, args: ["restart"])
+    }
+
+    func fetchSubsystems() async -> [NovaSubsystem] {
+        let checks: [(id: String, name: String, port: Int)] = [
+            ("postgresql", "PostgreSQL", 5432),
+            ("redis", "Redis", 6379),
+            ("ollama", "Ollama", 11434),
+            ("gateway", "OpenClaw Gateway", 18789),
+            ("memory", "Memory Server", 18790),
+            ("openwebui", "OpenWebUI", 3000),
+            ("tinychat", "TinyChat", 8000),
+        ]
+
+        var results: [NovaSubsystem] = []
+        for svc in checks {
+            let running = isPortListening(svc.port)
+            var detail = running ? "port \(svc.port)" : "stopped"
+
+            if running {
+                switch svc.id {
+                case "ollama":
+                    if let url = URL(string: "http://127.0.0.1:11434/api/tags"),
+                       let (data, _) = try? await URLSession.shared.data(from: url),
+                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let models = json["models"] as? [[String: Any]] {
+                        detail = "\(models.count) models"
+                    }
+                case "memory":
+                    if let url = URL(string: "http://127.0.0.1:18790/health"),
+                       let (data, _) = try? await URLSession.shared.data(from: url),
+                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let count = json["count"] as? Int {
+                        detail = "\(count) memories"
+                    }
+                case "redis":
+                    let out = runCommand("/opt/homebrew/bin/redis-cli", args: ["ping"])
+                    detail = out.trimmingCharacters(in: .whitespacesAndNewlines) == "PONG" ? "PONG" : "no response"
+                case "postgresql":
+                    let out = runCommand("/opt/homebrew/opt/postgresql@17/bin/psql",
+                                         args: ["-h", "127.0.0.1", "-d", "nova_memories", "-t", "-c", "SELECT 1"])
+                    detail = out.contains("1") ? "nova_memories OK" : "query failed"
+                default:
+                    break
+                }
+            }
+
+            results.append(NovaSubsystem(id: svc.id, name: svc.name, port: svc.port,
+                                          isRunning: running, detail: detail))
+        }
+        return results
+    }
+
+    private func isPortListening(_ port: Int) -> Bool {
+        let output = runCommand("/usr/sbin/lsof", args: ["-ti", "tcp:\(port)", "-sTCP:LISTEN"])
+        return !output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     // MARK: - Shell helper
 
     private func runCommand(_ cmd: String, args: [String]) -> String {

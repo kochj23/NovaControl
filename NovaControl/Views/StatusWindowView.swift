@@ -500,19 +500,92 @@ struct NovaTab: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if let nova = data.novaStatus {
-                // AI Services health row
+                novaServicesSection
+                Divider()
                 aiServicesSection
                 Divider()
-                // Nova identity
                 novaIdentitySection(nova: nova)
                 Divider()
-                // Cron health grid
                 cronSection(crons: nova.crons)
             } else {
                 emptyState(icon: "brain.head.profile", text: "Loading Nova status...")
             }
         }
         .padding(.vertical, 8)
+    }
+
+    // MARK: Nova Services Control
+
+    private var novaServicesSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Services")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                Spacer()
+                let running = data.novaSubsystems.filter(\.isRunning).count
+                let total = data.novaSubsystems.count
+                Text("\(running)/\(total) running")
+                    .font(.caption2)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(running == total ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
+                    .foregroundColor(running == total ? .green : .orange)
+                    .cornerRadius(4)
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 6)
+
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 4), spacing: 4) {
+                ForEach(data.novaSubsystems) { sub in
+                    SubsystemBadge(subsystem: sub)
+                }
+            }
+            .padding(.horizontal, 16)
+
+            HStack(spacing: 8) {
+                Button {
+                    data.novaStackAction(.start)
+                } label: {
+                    Label("Start All", systemImage: "play.fill")
+                        .font(.caption)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
+                .controlSize(.small)
+
+                Button {
+                    data.novaStackAction(.stop)
+                } label: {
+                    Label("Stop All", systemImage: "stop.fill")
+                        .font(.caption)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .tint(.red)
+                .controlSize(.small)
+
+                Button {
+                    data.novaStackAction(.restart)
+                } label: {
+                    Label("Restart", systemImage: "arrow.clockwise")
+                        .font(.caption)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+            .disabled(data.novaStackBusy)
+            .overlay {
+                if data.novaStackBusy {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
+        }
     }
 
     // MARK: AI Services
@@ -694,6 +767,34 @@ struct AIServiceBadge: View {
         .padding(8)
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(7)
+    }
+}
+
+// MARK: - Subsystem Badge
+
+struct SubsystemBadge: View {
+    let subsystem: NovaSubsystem
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Circle()
+                .fill(subsystem.isRunning ? Color.green : Color.red)
+                .frame(width: 6, height: 6)
+                .shadow(color: (subsystem.isRunning ? Color.green : Color.red).opacity(0.5), radius: 2)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(subsystem.name)
+                    .font(.system(size: 9, weight: .medium))
+                    .lineLimit(1)
+                Text(subsystem.detail)
+                    .font(.system(size: 8))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(5)
+        .background(Color(NSColor.controlBackgroundColor))
+        .cornerRadius(5)
     }
 }
 

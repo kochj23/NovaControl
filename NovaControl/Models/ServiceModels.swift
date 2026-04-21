@@ -290,6 +290,20 @@ struct MLXCodeInfo: Codable {
     let queueDepth: Int?
 }
 
+// MARK: - Nova Subsystem Control
+
+struct NovaSubsystem: Identifiable {
+    let id: String
+    let name: String
+    let port: Int
+    var isRunning: Bool
+    var detail: String
+}
+
+enum NovaStackAction {
+    case start, stop, restart
+}
+
 struct LocalLLM: Identifiable, Codable {
     let id: String          // model name
     let name: String        // display name

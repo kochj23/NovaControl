@@ -36,6 +36,8 @@ class DataManager: ObservableObject {
     @Published var aiServices: [AIService] = []
     @Published var mlxCodeInfo: MLXCodeInfo?
     @Published var localLLMs: [LocalLLM] = []
+    @Published var novaSubsystems: [NovaSubsystem] = []
+    @Published var novaStackBusy: Bool = false
 
     @Published var serviceStatuses: [ServiceInfo] = []
     @Published var lastRefresh: Date = Date()
@@ -69,10 +71,12 @@ class DataManager: ObservableObject {
             async let ai    = NovaReader.shared.fetchAIServices()
             async let mlx   = MLXCodeReader.shared.fetchStatus()
             async let llms  = NovaReader.shared.fetchLocalLLMs()
+            async let subs  = NovaReader.shared.fetchSubsystems()
 
             let (meetings, actions, persons, goals, devs, threats, jobs, history,
-                 sysStats, processes, articles, favorites, novaStatus, aiServices, mlxInfo, localLLMs) =
-                await (m, a, p, g, d, t, j, h, stats, procs, news, favs, nova, ai, mlx, llms)
+                 sysStats, processes, articles, favorites, novaStatus, aiServices, mlxInfo, localLLMs,
+                 subsystems) =
+                await (m, a, p, g, d, t, j, h, stats, procs, news, favs, nova, ai, mlx, llms, subs)
 
             await MainActor.run {
                 self.meetings      = meetings
@@ -91,6 +95,7 @@ class DataManager: ObservableObject {
                 self.aiServices    = aiServices
                 self.mlxCodeInfo   = mlxInfo
                 self.localLLMs     = localLLMs
+                self.novaSubsystems = subsystems
                 self.lastRefresh   = Date()
                 self.updateServiceStatuses()
             }
@@ -153,6 +158,23 @@ class DataManager: ObservableObject {
         }
 
         serviceStatuses = statuses
+    }
+
+    // MARK: - Nova Stack Control
+
+    func novaStackAction(_ action: NovaStackAction) {
+        guard !novaStackBusy else { return }
+        novaStackBusy = true
+        Task {
+            switch action {
+            case .start:   _ = await NovaReader.shared.startAllServices()
+            case .stop:    _ = await NovaReader.shared.stopAllServices()
+            case .restart: _ = await NovaReader.shared.restartAllServices()
+            }
+            try? await Task.sleep(for: .seconds(3))
+            refresh()
+            await MainActor.run { novaStackBusy = false }
+        }
     }
 
     /// Look up person name by ID
