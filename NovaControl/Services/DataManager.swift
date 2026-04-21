@@ -38,6 +38,7 @@ class DataManager: ObservableObject {
     @Published var localLLMs: [LocalLLM] = []
     @Published var novaSubsystems: [NovaSubsystem] = []
     @Published var novaStackBusy: Bool = false
+    @Published var novaStackProgress: String = ""
 
     @Published var serviceStatuses: [ServiceInfo] = []
     @Published var lastRefresh: Date = Date()
@@ -165,15 +166,25 @@ class DataManager: ObservableObject {
     func novaStackAction(_ action: NovaStackAction) {
         guard !novaStackBusy else { return }
         novaStackBusy = true
+        novaStackProgress = ""
+        let cmd: String
+        switch action {
+        case .start:   cmd = "start"
+        case .stop:    cmd = "stop"
+        case .restart: cmd = "restart"
+        }
         Task {
-            switch action {
-            case .start:   _ = await NovaReader.shared.startAllServices()
-            case .stop:    _ = await NovaReader.shared.stopAllServices()
-            case .restart: _ = await NovaReader.shared.restartAllServices()
+            _ = await NovaReader.shared.runServiceAction(cmd) { line in
+                Task { @MainActor in
+                    self.novaStackProgress = line
+                }
             }
-            try? await Task.sleep(for: .seconds(3))
+            try? await Task.sleep(for: .seconds(2))
             refresh()
-            await MainActor.run { novaStackBusy = false }
+            await MainActor.run {
+                novaStackBusy = false
+                novaStackProgress = ""
+            }
         }
     }
 

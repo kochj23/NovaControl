@@ -577,14 +577,25 @@ struct NovaTab: View {
                 .controlSize(.small)
             }
             .disabled(data.novaStackBusy)
-            .overlay {
-                if data.novaStackBusy {
-                    ProgressView()
-                        .scaleEffect(0.7)
-                }
-            }
             .padding(.horizontal, 16)
-            .padding(.bottom, 8)
+
+            if data.novaStackBusy {
+                HStack(spacing: 6) {
+                    ProgressView()
+                        .scaleEffect(0.6)
+                        .frame(width: 12, height: 12)
+                    Text(data.novaStackProgress)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                .padding(.horizontal, 16)
+                .transition(.opacity)
+                .animation(.easeInOut(duration: 0.2), value: data.novaStackProgress)
+            }
+
+            Spacer().frame(height: 8)
         }
     }
 

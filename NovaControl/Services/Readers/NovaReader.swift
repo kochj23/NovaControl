@@ -303,6 +303,61 @@ actor NovaReader {
         return runCommand(novaServices, args: ["restart"])
     }
 
+    func runServiceAction(_ action: String, onProgress: @escaping (String) -> Void) async -> Bool {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: novaServices)
+        process.arguments = [action]
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+
+        do {
+            try process.run()
+        } catch {
+            return false
+        }
+
+        let handle = pipe.fileHandleForReading
+
+        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+            DispatchQueue.global(qos: .userInitiated).async {
+                var buffer = Data()
+                while process.isRunning || handle.availableData.count > 0 {
+                    let chunk = handle.availableData
+                    if chunk.isEmpty {
+                        Thread.sleep(forTimeInterval: 0.1)
+                        continue
+                    }
+                    buffer.append(chunk)
+
+                    while let range = buffer.range(of: Data("\n".utf8)) {
+                        let lineData = buffer.subdata(in: buffer.startIndex..<range.lowerBound)
+                        buffer.removeSubrange(buffer.startIndex...range.lowerBound)
+                        if let line = String(data: lineData, encoding: .utf8)?
+                            .trimmingCharacters(in: .whitespacesAndNewlines),
+                           !line.isEmpty {
+                            let clean = self.stripAnsi(line)
+                            DispatchQueue.main.async { onProgress(clean) }
+                        }
+                    }
+                }
+                process.waitUntilExit()
+                cont.resume()
+            }
+        }
+
+        return process.terminationStatus == 0
+    }
+
+    private func stripAnsi(_ str: String) -> String {
+        str.replacingOccurrences(
+            of: "\\e\\[[0-9;]*m|\\[\\d+;?\\d*m",
+            with: "",
+            options: .regularExpression
+        )
+    }
+
     func fetchSubsystems() async -> [NovaSubsystem] {
         let checks: [(id: String, name: String, port: Int)] = [
             ("postgresql", "PostgreSQL", 5432),
