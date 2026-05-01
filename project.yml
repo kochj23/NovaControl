@@ -24,3 +24,14 @@ targets:
       INFOPLIST_KEY_NSLocalNetworkUsageDescription: "NovaControl provides a unified local API for Nova and Claude."
       MARKETING_VERSION: "1.1.0"
       CURRENT_PROJECT_VERSION: "2"
+  NovaControlTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [NovaControlTests]
+    dependencies:
+      - target: NovaControl
+    settings:
+      BUNDLE_IDENTIFIER: net.digitalnoise.NovaControlTests
+      GENERATE_INFOPLIST_FILE: YES
+      TEST_HOST: "$(BUILT_PRODUCTS_DIR)/NovaControl.app/Contents/MacOS/NovaControl"
+      BUNDLE_LOADER: "$(TEST_HOST)"

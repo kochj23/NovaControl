@@ -17,55 +17,51 @@ metrics -- all without requiring the source applications to be running.
 
 ## Architecture
 
-```
-                          +---------------------------+
-                          |      macOS Menu Bar       |
-                          |  (antenna icon, floating  |
-                          |    status window, 6 tabs) |
-                          +------------+--------------+
-                                       |
-                          +------------v--------------+
-                          |       DataManager         |
-                          |   (60s auto-refresh,      |
-                          |    @Published properties,  |
-                          |    ObservableObject)       |
-                          +------------+--------------+
-                                       |
-            +---------+---------+------+------+---------+---------+
-            |         |         |             |         |         |
-      +-----v--+ +---v----+ +-v------+ +----v---+ +---v----+ +--v-------+
-      |OneOnOne| | NMAP   | | Rsync  | | System | | News   | |  Nova /  |
-      | Reader | | Reader | | Reader | | Stats  | |Summary | | AI / MLX |
-      |        | |        | |        | | Reader | | Reader | | Readers  |
-      +---+----+ +---+----+ +---+----+ +---+----+ +---+----+ +----+-----+
-          |           |          |          |          |            |
-          v           v          v          v          v            v
-     ~/Library/   Sandboxed  ~/Library/   Mach      ~/Library/  OpenClaw
-      App Supp/   Container   App Supp/  host_     App Supp/   Gateway
-     OneOnOne/    plist       RsyncGUI/  statistics NewsSummary/ ws://18789
-     (CloudKit)   (NMAPScanner)          IOKit                 Memory :18790
-                                         ps(1)                 Ollama :11434
-                                                               MLX    :5050
-                          +------------+--------------+
-                          |    NovaAPIServer           |
-                          |  NWListener on 127.0.0.1   |
-                          |  port 37400, loopback only  |
-                          |  28 routes, ETag caching,   |
-                          |  OpenAPI 3.0, Prometheus    |
-                          +----------------------------+
-                                       |
-            +---------+---------+------+------+---------+
-            |         |         |             |         |
-       /api/oneonone /api/nmap /api/rsync  /api/system /api/news
-       /api/nova     /api/ai   /api/mlxcode /api/health /api/workflows
-       /api/topology /api/graph /api/docs   /metrics
-                                       |
-                          +------------v--------------+
-                          |    WorkflowEngine          |
-                          |  State machine: triggers,  |
-                          |  steps (Slack, Jira, email, |
-                          |  webhook, wait), run history |
-                          +----------------------------+
+```mermaid
+graph TB
+    subgraph NovaControl
+        MB[Menu Bar Icon] --> SW[StatusWindowView<br/>6-Tab Dashboard]
+        AD[AppDelegate] --> DM[DataManager<br/>60s auto-refresh]
+        AD --> API[NovaAPIServer<br/>NWListener :37400<br/>28 routes / ETag / OpenAPI]
+        DM --> WE[WorkflowEngine<br/>Slack / Jira / Email / Webhook]
+    end
+
+    subgraph Readers
+        DM --> OOR[OneOnOneReader]
+        DM --> NR[NMAPReader]
+        DM --> RR[RsyncReader]
+        DM --> SSR[SystemStatsReader]
+        DM --> NSR[NewsSummaryReader]
+        DM --> NVR[NovaReader]
+        DM --> MLR[MLXCodeReader]
+    end
+
+    subgraph Data Sources
+        OOR -->|JSON files| OOD[~/Library/App Support/OneOnOne/]
+        NR -->|Plist| NMD[NMAPScanner Container]
+        RR -->|JSON files| RSD[~/Library/App Support/RsyncGUI/]
+        SSR -->|Mach/IOKit| SYS[Kernel APIs]
+        NSR -->|JSON files| NSD[~/Library/App Support/NewsSummary/]
+        NVR -->|HTTP + CLI| GW[OpenClaw :18789]
+        NVR -->|HTTP| MEM[Memory Server :18790]
+        NVR -->|HTTP| OLL[Ollama :11434]
+        MLR -->|HTTP proxy| MLXC[MLXCode :37422]
+    end
+
+    subgraph API Routes
+        API --> R1[/api/oneonone/*]
+        API --> R2[/api/nmap/*]
+        API --> R3[/api/rsync/*]
+        API --> R4[/api/system/*]
+        API --> R5[/api/nova/* /api/ai/*]
+        API --> R6[/api/health /metrics /api/docs]
+        API --> R7[/api/workflows /api/topology /api/graph]
+    end
+
+    style MB fill:#5535ff,color:#fff
+    style API fill:#2a6,color:#fff
+    style DM fill:#38d,color:#fff
+    style WE fill:#c55,color:#fff
 ```
 
 ### Data Flow
@@ -504,7 +500,40 @@ and POST to `/api/graph/ingest` to populate the database.
 
 ---
 
+## Testing
+
+NovaControl includes 45 unit tests across three test suites covering all Codable models, workflow automation types, and security compliance.
+
+### Test Suites
+
+| Suite | Tests | Coverage |
+|---|---|---|
+| `ServiceModelsTests` | 26 | All 15+ model types: ServiceInfo, Meeting, ActionItem, Person, Goal, ScannedDevice, ThreatFinding, SyncJob, ExecutionHistoryEntry, NewsArticle, NovaCronJob, NovaStatus, AIService, LocalLLM, TopologyConnection, ManualHealthInput, NewsCategory. Codable round-trip tests for ActionItem, SyncJob, NewsArticle. |
+| `WorkflowEngineTests` | 10 | WorkflowDefinition codable round-trip, all 3 trigger types (manual, newActionItem, actionItemCompleted), all 5 step types (postToSlack, createJiraTicket, sendEmail, webhook, wait), WorkflowRun status enum, multi-step workflow serialization. |
+| `SecurityTests` | 9 | Credential scan across all Swift source files (sk-, AKIA, ghp_, xoxb-, xoxp-), personal email detection, entitlements validation (sandbox disabled, network server/client), Slack token config loading, IP address audit (loopback-only), template injection prevention. |
+
+### Run Tests
+
+```bash
+cd NovaControl
+xcodegen generate
+xcodebuild test -scheme NovaControl -destination 'platform=macOS'
+```
+
+### Security Test Coverage
+
+- All `.swift` files scanned for 5 hardcoded credential patterns
+- Personal email addresses verified absent from source
+- IP addresses verified as `127.0.0.1` only (loopback binding)
+- Entitlements confirmed: sandbox disabled, network server + client enabled
+- Slack token confirmed loaded from `~/.openclaw/openclaw.json`
+- Workflow template syntax verified free of shell metacharacters
+
+---
+
 ## License
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 MIT License -- see [LICENSE](LICENSE) for the full text.
 

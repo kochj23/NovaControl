@@ -13,27 +13,44 @@
 		4742CFE946EC48AFCE72EA11 /* NovaReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 755C33F71A4D361ACF3A01E2 /* NovaReader.swift */; };
 		50F94FD110E839EDE6CA29D8 /* NovaAPIServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A296C3A5EB2693A8AC15C753 /* NovaAPIServer.swift */; };
 		69557E2DD01CE9312C3FB00A /* RsyncReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5C3EE0E08A946C0527A3F81 /* RsyncReader.swift */; };
+		743E57A4DDA3A03808ABE199 /* ServiceModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC8DD0700535E73FF3EA2B5D /* ServiceModelsTests.swift */; };
 		76C84F6941929AB8A7474734 /* OneOnOneReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = E01F37A38EBADAD85E2BC764 /* OneOnOneReader.swift */; };
 		7FE6401696EF19333E3E6BBF /* NewsSummaryReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 411D79BCF4B02EC2F1038FCC /* NewsSummaryReader.swift */; };
 		8D6197314BAEACA145D657D4 /* MLXCodeReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D6D1C4648F18FE85594493B /* MLXCodeReader.swift */; };
 		8FE8D35F447C93F1BEA737D5 /* NovaControlApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60508F126E68C7A5109B2BE2 /* NovaControlApp.swift */; };
+		B1EE9502C53321556030A9F9 /* WorkflowEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BBE9E16D3E46919A4AFBB31 /* WorkflowEngineTests.swift */; };
 		B3A3181C605DFB17081072CF /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 86F58176921801959333C12F /* IOKit.framework */; };
+		B5CEC5646C73F238C1EA254C /* SecurityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85365DE4E096ADDA9B8DE34D /* SecurityTests.swift */; };
 		B89C4467B809069A5C0C2832 /* NMAPReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBD791C1FD27ECC9AFA3185F /* NMAPReader.swift */; };
 		D70E7C85821F85491FD6B54C /* WorkflowEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E9F0F3EC7774CB1146964F0 /* WorkflowEngine.swift */; };
 		E3C88C45BA35DA4CF0B6502B /* StatusWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 939FBBCC25F92AA1ECFE6535 /* StatusWindowView.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		30215E52B7B683F729D3DB5A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0B0A35CD52D2566CB00AF462 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 1264D72F5BF16179ADF55C7D;
+			remoteInfo = NovaControl;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		0E5C4C76841118DC9CB8E389 /* DataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataManager.swift; sourceTree = "<group>"; };
+		1735DFAB6A5BE43416AFDDC3 /* NovaControlTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NovaControlTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		2BBE9E16D3E46919A4AFBB31 /* WorkflowEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowEngineTests.swift; sourceTree = "<group>"; };
 		411D79BCF4B02EC2F1038FCC /* NewsSummaryReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewsSummaryReader.swift; sourceTree = "<group>"; };
 		4D6D1C4648F18FE85594493B /* MLXCodeReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLXCodeReader.swift; sourceTree = "<group>"; };
 		60508F126E68C7A5109B2BE2 /* NovaControlApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaControlApp.swift; sourceTree = "<group>"; };
 		755C33F71A4D361ACF3A01E2 /* NovaReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaReader.swift; sourceTree = "<group>"; };
+		85365DE4E096ADDA9B8DE34D /* SecurityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityTests.swift; sourceTree = "<group>"; };
 		86F58176921801959333C12F /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
 		8E9F0F3EC7774CB1146964F0 /* WorkflowEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowEngine.swift; sourceTree = "<group>"; };
 		90A30D3290D5F150B5BCAF55 /* NovaControl.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NovaControl.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		939FBBCC25F92AA1ECFE6535 /* StatusWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusWindowView.swift; sourceTree = "<group>"; };
 		A296C3A5EB2693A8AC15C753 /* NovaAPIServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaAPIServer.swift; sourceTree = "<group>"; };
+		CC8DD0700535E73FF3EA2B5D /* ServiceModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceModelsTests.swift; sourceTree = "<group>"; };
 		CE6CCD454AA2773FB883E74B /* SystemStatsReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemStatsReader.swift; sourceTree = "<group>"; };
 		D5C3EE0E08A946C0527A3F81 /* RsyncReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RsyncReader.swift; sourceTree = "<group>"; };
 		E01F37A38EBADAD85E2BC764 /* OneOnOneReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OneOnOneReader.swift; sourceTree = "<group>"; };
@@ -57,6 +74,7 @@
 			isa = PBXGroup;
 			children = (
 				5FEE539179D91A594360D822 /* NovaControl */,
+				8FB2B8189FF2CE7E4F083835 /* NovaControlTests */,
 				CC77404338427D5BCB67A91B /* Frameworks */,
 				79995E3E9A6C17FB21415898 /* Products */,
 			);
@@ -96,8 +114,19 @@
 			isa = PBXGroup;
 			children = (
 				90A30D3290D5F150B5BCAF55 /* NovaControl.app */,
+				1735DFAB6A5BE43416AFDDC3 /* NovaControlTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		8FB2B8189FF2CE7E4F083835 /* NovaControlTests */ = {
+			isa = PBXGroup;
+			children = (
+				85365DE4E096ADDA9B8DE34D /* SecurityTests.swift */,
+				CC8DD0700535E73FF3EA2B5D /* ServiceModelsTests.swift */,
+				2BBE9E16D3E46919A4AFBB31 /* WorkflowEngineTests.swift */,
+			);
+			path = NovaControlTests;
 			sourceTree = "<group>";
 		};
 		92E100079B61C8AC562D3B10 /* Readers */ = {
@@ -133,6 +162,24 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		044B5E9D504495825433AD9C /* NovaControlTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 869E1582B48F26E94A3E4623 /* Build configuration list for PBXNativeTarget "NovaControlTests" */;
+			buildPhases = (
+				2356CFED0074882490D01590 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				476ECD9C627DE21C50D68DD2 /* PBXTargetDependency */,
+			);
+			name = NovaControlTests;
+			packageProductDependencies = (
+			);
+			productName = NovaControlTests;
+			productReference = 1735DFAB6A5BE43416AFDDC3 /* NovaControlTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		1264D72F5BF16179ADF55C7D /* NovaControl */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = A927251A1E6D5A7E333150B0 /* Build configuration list for PBXNativeTarget "NovaControl" */;
@@ -167,7 +214,6 @@
 				};
 			};
 			buildConfigurationList = DC7C4B4FA376CD463A22497F /* Build configuration list for PBXProject "NovaControl" */;
-			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -177,15 +223,27 @@
 			mainGroup = 087E2460D802EE693D4B082F;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
+			productRefGroup = 79995E3E9A6C17FB21415898 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				1264D72F5BF16179ADF55C7D /* NovaControl */,
+				044B5E9D504495825433AD9C /* NovaControlTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXSourcesBuildPhase section */
+		2356CFED0074882490D01590 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B5CEC5646C73F238C1EA254C /* SecurityTests.swift in Sources */,
+				743E57A4DDA3A03808ABE199 /* ServiceModelsTests.swift in Sources */,
+				B1EE9502C53321556030A9F9 /* WorkflowEngineTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		45EB6F4EFCA82437D57F54CF /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -207,6 +265,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		476ECD9C627DE21C50D68DD2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1264D72F5BF16179ADF55C7D /* NovaControl */;
+			targetProxy = 30215E52B7B683F729D3DB5A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		03C4B1B1DA28C8A8507A6531 /* Release */ = {
@@ -265,6 +331,24 @@
 			};
 			name = Release;
 		};
+		0819D40A5EAE01AE1CCAF6BE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_IDENTIFIER = net.digitalnoise.NovaControlTests;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = net.digitalnoise.NovaControlTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NovaControl.app/Contents/MacOS/NovaControl";
+			};
+			name = Debug;
+		};
 		08C64E690FDA000D9AAF04BE /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -274,7 +358,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = QRRCB8HB3W;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
@@ -283,7 +367,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = net.digitalnoise.NovaControl;
 				PRODUCT_NAME = NovaControl;
 				SDKROOT = macosx;
@@ -362,7 +446,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = QRRCB8HB3W;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
@@ -371,16 +455,43 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = net.digitalnoise.NovaControl;
 				PRODUCT_NAME = NovaControl;
 				SDKROOT = macosx;
 			};
 			name = Debug;
 		};
+		F929331D8C3F0714D870D32C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_IDENTIFIER = net.digitalnoise.NovaControlTests;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = net.digitalnoise.NovaControlTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NovaControl.app/Contents/MacOS/NovaControl";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		869E1582B48F26E94A3E4623 /* Build configuration list for PBXNativeTarget "NovaControlTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0819D40A5EAE01AE1CCAF6BE /* Debug */,
+				F929331D8C3F0714D870D32C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		A927251A1E6D5A7E333150B0 /* Build configuration list for PBXNativeTarget "NovaControl" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
