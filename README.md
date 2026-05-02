@@ -5,7 +5,7 @@
 ![Swift](https://img.shields.io/badge/Swift-5.9-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![API Port](https://img.shields.io/badge/API-port%2037400-purple)
-![Version](https://img.shields.io/badge/version-1.1.0-brightgreen)
+![Version](https://img.shields.io/badge/version-1.2.0-brightgreen)
 
 A macOS menu bar application that consolidates the HTTP APIs of multiple local
 applications into a single unified endpoint. NovaControl reads each app's data
@@ -34,6 +34,8 @@ graph TB
         DM --> NSR[NewsSummaryReader]
         DM --> NVR[NovaReader]
         DM --> MLR[MLXCodeReader]
+        DM --> HKR[HomeKitReader]
+        DM --> AIR[AIServiceReader]
     end
 
     subgraph Data Sources
@@ -46,6 +48,8 @@ graph TB
         NVR -->|HTTP| MEM[Memory Server :18790]
         NVR -->|HTTP| OLL[Ollama :11434]
         MLR -->|HTTP proxy| MLXC[MLXCode :37422]
+        HKR -->|Shortcuts CLI| HK[HomeKit Scenes]
+        AIR -->|HTTP| OLL
     end
 
     subgraph API Routes
@@ -56,6 +60,7 @@ graph TB
         API --> R5[/api/nova/* /api/ai/*]
         API --> R6[/api/health /metrics /api/docs]
         API --> R7[/api/workflows /api/topology /api/graph]
+        API --> R8[/api/homekit/*]
     end
 
     style MB fill:#5535ff,color:#fff
@@ -79,9 +84,11 @@ metrics from kernel APIs. The data path for each service:
 | News Summary | `~/Library/Application Support/NewsSummary/*.json` | 60s |
 | Nova Gateway | HTTP probe `127.0.0.1:18789/health` | 60s |
 | Nova Memory | HTTP probe `127.0.0.1:18790/health` + `/stats` | 60s |
-| Ollama | HTTP `127.0.0.1:11434/api/tags` + `/api/ps` | 60s |
+| Ollama | HTTP `127.0.0.1:11434/api/tags` + `/api/ps` + `/api/generate` | 60s / on-demand |
 | MLX Server | HTTP `127.0.0.1:5050/v1/models` | 60s |
 | MLXCode | HTTP proxy `127.0.0.1:37422` | 60s |
+| HomeKit | Shortcuts CLI (`/usr/bin/shortcuts run`) | 5-min cache |
+| AI Summarization | Ollama `/api/generate` (nova:latest model) | on-demand |
 
 ---
 
@@ -94,14 +101,16 @@ data.
 | App | Original Port | NovaControl Route Prefix |
 |-----|---------------|--------------------------|
 | OneOnOne | 37421 | `/api/oneonone/*` |
+| HomeKitControl | 37432 | `/api/homekit/*` |
 | NMAPScanner | 37423 | `/api/nmap/*` |
 | RsyncGUI | 37424 | `/api/rsync/*` |
 | TopGUI | 37443 | `/api/system/*` |
 | News Summary | 37438 | `/api/news/*` |
 
 Additional routes exist for Nova/OpenClaw AI services (`/api/nova/*`,
-`/api/ai/*`, `/api/mlxcode/*`), health monitoring, workflow automation,
-topology mapping, content graphs, and Prometheus metrics export.
+`/api/ai/*`, `/api/mlxcode/*`), HomeKit scene execution, AI-powered
+summarization, health monitoring, workflow automation, topology mapping,
+content graphs, and Prometheus metrics export.
 
 ---
 
