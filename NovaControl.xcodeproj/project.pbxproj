@@ -7,9 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		00D6D8BA09E61CE073E05DE8 /* HomeKitReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42E08BA60666962D5311383C /* HomeKitReader.swift */; };
 		096E0DDECCAD4EB7BFAB5593 /* SystemStatsReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE6CCD454AA2773FB883E74B /* SystemStatsReader.swift */; };
 		0F87BDBFE9FFEBF39187DD18 /* DataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E5C4C76841118DC9CB8E389 /* DataManager.swift */; };
 		1B8D1E48A9573F18932944B6 /* ServiceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3DCDA8C6F876D585F48FEFC /* ServiceModels.swift */; };
+		24C0EBF951627D4D96D37CDA /* AIServiceReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E4918F8F10027F1E169DB02 /* AIServiceReader.swift */; };
 		4742CFE946EC48AFCE72EA11 /* NovaReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 755C33F71A4D361ACF3A01E2 /* NovaReader.swift */; };
 		50F94FD110E839EDE6CA29D8 /* NovaAPIServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A296C3A5EB2693A8AC15C753 /* NovaAPIServer.swift */; };
 		69557E2DD01CE9312C3FB00A /* RsyncReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5C3EE0E08A946C0527A3F81 /* RsyncReader.swift */; };
@@ -40,7 +42,9 @@
 		0E5C4C76841118DC9CB8E389 /* DataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataManager.swift; sourceTree = "<group>"; };
 		1735DFAB6A5BE43416AFDDC3 /* NovaControlTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NovaControlTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2BBE9E16D3E46919A4AFBB31 /* WorkflowEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowEngineTests.swift; sourceTree = "<group>"; };
+		2E4918F8F10027F1E169DB02 /* AIServiceReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIServiceReader.swift; sourceTree = "<group>"; };
 		411D79BCF4B02EC2F1038FCC /* NewsSummaryReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewsSummaryReader.swift; sourceTree = "<group>"; };
+		42E08BA60666962D5311383C /* HomeKitReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeKitReader.swift; sourceTree = "<group>"; };
 		4D6D1C4648F18FE85594493B /* MLXCodeReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLXCodeReader.swift; sourceTree = "<group>"; };
 		60508F126E68C7A5109B2BE2 /* NovaControlApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaControlApp.swift; sourceTree = "<group>"; };
 		755C33F71A4D361ACF3A01E2 /* NovaReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaReader.swift; sourceTree = "<group>"; };
@@ -132,6 +136,8 @@
 		92E100079B61C8AC562D3B10 /* Readers */ = {
 			isa = PBXGroup;
 			children = (
+				2E4918F8F10027F1E169DB02 /* AIServiceReader.swift */,
+				42E08BA60666962D5311383C /* HomeKitReader.swift */,
 				4D6D1C4648F18FE85594493B /* MLXCodeReader.swift */,
 				411D79BCF4B02EC2F1038FCC /* NewsSummaryReader.swift */,
 				FBD791C1FD27ECC9AFA3185F /* NMAPReader.swift */,
@@ -248,7 +254,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				24C0EBF951627D4D96D37CDA /* AIServiceReader.swift in Sources */,
 				0F87BDBFE9FFEBF39187DD18 /* DataManager.swift in Sources */,
+				00D6D8BA09E61CE073E05DE8 /* HomeKitReader.swift in Sources */,
 				8D6197314BAEACA145D657D4 /* MLXCodeReader.swift in Sources */,
 				B89C4467B809069A5C0C2832 /* NMAPReader.swift in Sources */,
 				7FE6401696EF19333E3E6BBF /* NewsSummaryReader.swift in Sources */,
@@ -358,7 +366,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = QRRCB8HB3W;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
@@ -367,7 +375,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = net.digitalnoise.NovaControl;
 				PRODUCT_NAME = NovaControl;
 				SDKROOT = macosx;
@@ -446,7 +454,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = QRRCB8HB3W;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
@@ -455,7 +463,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = net.digitalnoise.NovaControl;
 				PRODUCT_NAME = NovaControl;
 				SDKROOT = macosx;

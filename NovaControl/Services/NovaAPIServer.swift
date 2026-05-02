@@ -1,7 +1,7 @@
 // NovaControl — Unified HTTP API Server
 // Written by Jordan Koch
 // Port 37400 · binds to 127.0.0.1 only
-// Replaces: OneOnOne (37421), NMAPScanner (37423), RsyncGUI (37424), TopGUI (37443), News Summary (37438)
+// Replaces: OneOnOne (37421), HomeKitControl (37432), NMAPScanner (37423), RsyncGUI (37424), TopGUI (37443), News Summary (37438)
 
 import CryptoKit
 import Foundation
@@ -324,6 +324,40 @@ final class NovaAPIServer {
             return await handleContentGraph()
         }
 
+        // HomeKit routes (replaces HomeKitControl port 37432)
+        if method == "GET" && path == "/api/homekit/scenes" {
+            return await handleHomeKitScenes(query: query)
+        }
+        if method == "POST" && path == "/api/homekit/scenes/execute" {
+            return await handleHomeKitExecute(body: body)
+        }
+        if method == "GET" && path == "/api/homekit/accessories" {
+            return await handleHomeKitAccessories()
+        }
+        if method == "POST" && path == "/api/homekit/refresh" {
+            return await handleHomeKitRefresh()
+        }
+
+        // AI Summarization routes (replaces OneOnOne port 37421 POST endpoints)
+        if method == "POST" && path == "/api/ai/summarize" {
+            return await handleAISummarize(body: body)
+        }
+        if method == "POST" && path.hasPrefix("/api/oneonone/meetings/") && path.hasSuffix("/summary") {
+            let meetingId = path
+                .replacingOccurrences(of: "/api/oneonone/meetings/", with: "")
+                .replacingOccurrences(of: "/summary", with: "")
+            return await handleMeetingSummary(meetingId: meetingId)
+        }
+        if method == "POST" && path == "/api/ai/extract-actions" {
+            return await handleExtractActions(body: body)
+        }
+
+        // GET single meeting by UUID
+        if method == "GET" && path.hasPrefix("/api/oneonone/meetings/") {
+            let meetingId = path.replacingOccurrences(of: "/api/oneonone/meetings/", with: "")
+            return await handleMeetingById(meetingId: meetingId)
+        }
+
         return (404, ["error": "Route not found", "path": path])
     }
 
@@ -618,7 +652,15 @@ final class NovaAPIServer {
                 "/api/nova/memory":                endpoint("GET", "Nova vector memory stats"),
                 "/api/nova/crons":                 endpoint("GET", "Nova cron job list"),
                 "/api/ai/status":                  endpoint("GET", "AI service availability (Ollama, MLX, etc.)"),
+                "/api/ai/summarize":               endpoint("POST", "Summarize email/text via local LLM {\"content\":\"...\",\"context\":\"...\"}"),
+                "/api/ai/extract-actions":         endpoint("POST", "Extract action items from notes {\"notes\":\"...\"}"),
                 "/api/mlxcode/status":             endpoint("GET", "MLXCode proxy status"),
+                "/api/homekit/scenes":             endpoint("GET", "List HomeKit scenes (via Shortcuts CLI)"),
+                "/api/homekit/scenes/execute":     endpoint("POST", "Execute HomeKit scene {\"name\":\"Scene Name\"}"),
+                "/api/homekit/accessories":        endpoint("GET", "List HomeKit accessories"),
+                "/api/homekit/refresh":            endpoint("POST", "Force refresh HomeKit scene cache"),
+                "/api/oneonone/meetings/{id}":     endpoint("GET", "Get specific meeting by UUID"),
+                "/api/oneonone/meetings/{id}/summary": endpoint("POST", "Generate AI summary for a meeting"),
             ]
         ]
         return (200, spec)
@@ -832,6 +874,79 @@ final class NovaAPIServer {
             "healthCorrelation": healthNote,
             "generatedAt": ISO8601DateFormatter().string(from: Date())
         ])
+    }
+
+    // MARK: - HomeKit Handlers
+
+    private func handleHomeKitScenes(query: [String: String]) async -> (Int, Any) {
+        let forceRefresh = query["refresh"] == "true"
+        let scenes = await HomeKitReader.shared.fetchScenes(forceRefresh: forceRefresh)
+        let available = await HomeKitReader.shared.isAvailable
+        if scenes.isEmpty && !available {
+            return (503, ["error": "Shortcuts CLI not available", "hint": "Install Shortcuts: 'List HomeKit Scenes', 'Execute HomeKit Scene'"])
+        }
+        return (200, ["scenes": scenes.map { ["id": $0.id, "name": $0.name] }, "count": scenes.count])
+    }
+
+    private func handleHomeKitExecute(body: Data?) async -> (Int, Any) {
+        guard let body = body,
+              let json = try? JSONSerialization.jsonObject(with: body) as? [String: String],
+              let name = json["name"], !name.isEmpty else {
+            return (400, ["error": "Request body must be JSON: {\"name\": \"Scene Name\"}"])
+        }
+        let (success, message) = await HomeKitReader.shared.executeScene(name: name)
+        return (success ? 200 : 404, ["success": success, "message": message, "scene": name])
+    }
+
+    private func handleHomeKitAccessories() async -> (Int, Any) {
+        let accessories = await HomeKitReader.shared.fetchAccessories()
+        return (200, ["accessories": accessories.map { a in
+            ["id": a.id, "name": a.name, "room": a.room as Any, "reachable": a.reachable] as [String: Any]
+        }, "count": accessories.count])
+    }
+
+    private func handleHomeKitRefresh() async -> (Int, Any) {
+        let scenes = await HomeKitReader.shared.fetchScenes(forceRefresh: true)
+        return (200, ["refreshed": true, "sceneCount": scenes.count])
+    }
+
+    // MARK: - AI Summarization Handlers
+
+    private func handleAISummarize(body: Data?) async -> (Int, Any) {
+        guard let body = body,
+              let json = try? JSONSerialization.jsonObject(with: body) as? [String: String],
+              let content = json["content"], !content.isEmpty else {
+            return (400, ["error": "Request body must be JSON: {\"content\": \"...\", \"context\": \"optional\"}"])
+        }
+        let context = json["context"]
+        let (status, response) = await AIServiceReader.shared.summarize(content: content, context: context)
+        return (status, response)
+    }
+
+    private func handleMeetingSummary(meetingId: String) async -> (Int, Any) {
+        let (status, response) = await AIServiceReader.shared.generateMeetingSummary(meetingId: meetingId)
+        return (status, response)
+    }
+
+    private func handleExtractActions(body: Data?) async -> (Int, Any) {
+        guard let body = body,
+              let json = try? JSONSerialization.jsonObject(with: body) as? [String: String],
+              let notes = json["notes"], !notes.isEmpty else {
+            return (400, ["error": "Request body must be JSON: {\"notes\": \"...\"}"])
+        }
+        let (status, response) = await AIServiceReader.shared.extractActionItems(notes: notes)
+        return (status, response)
+    }
+
+    private func handleMeetingById(meetingId: String) async -> (Int, Any) {
+        guard let uuid = UUID(uuidString: meetingId) else {
+            return (400, ["error": "Invalid UUID: \(meetingId)"])
+        }
+        let meetings = await OneOnOneReader.shared.fetchMeetings()
+        guard let meeting = meetings.first(where: { $0.id == uuid }) else {
+            return (404, ["error": "Meeting not found", "meetingId": meetingId])
+        }
+        return (200, encodable(meeting))
     }
 
     // GET /metrics — Prometheus text format
