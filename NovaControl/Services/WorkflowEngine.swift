@@ -202,20 +202,26 @@ final class WorkflowEngine {
             let channel = step.config["channel"] ?? "C0AMNQ5GX70"
             let message = renderTemplate(step.config["messageTemplate"] ?? "", context: context)
             guard !token.isEmpty else { return StepResult(ok: false, output: "No Slack token") }
-            do {
-                let payload = ["channel": channel, "text": message]
-                var req = URLRequest(url: URL(string: "https://slack.com/api/chat.postMessage")!)
-                req.httpMethod = "POST"
-                req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-                req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                req.httpBody = try JSONSerialization.data(withJSONObject: payload)
-                req.timeoutInterval = 10
-                let (_, resp) = try await URLSession.shared.data(for: req)
-                let ok = (resp as? HTTPURLResponse)?.statusCode == 200
-                return StepResult(ok: ok, output: ok ? "Posted to \(channel)" : "Slack API error")
-            } catch {
-                return StepResult(ok: false, output: "Slack error: \(error.localizedDescription)")
+            // Retry up to 3 times with exponential backoff for transient network failures
+            for attempt in 1...3 {
+                do {
+                    let payload = ["channel": channel, "text": message]
+                    var req = URLRequest(url: URL(string: "https://slack.com/api/chat.postMessage")!)
+                    req.httpMethod = "POST"
+                    req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                    req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    req.httpBody = try JSONSerialization.data(withJSONObject: payload)
+                    req.timeoutInterval = 10
+                    let (_, resp) = try await URLSession.shared.data(for: req)
+                    let ok = (resp as? HTTPURLResponse)?.statusCode == 200
+                    if ok { return StepResult(ok: true, output: "Posted to \(channel)") }
+                    if attempt == 3 { return StepResult(ok: false, output: "Slack API error after 3 attempts") }
+                } catch {
+                    if attempt == 3 { return StepResult(ok: false, output: "Slack error: \(error.localizedDescription)") }
+                }
+                try? await Task.sleep(nanoseconds: UInt64(1_000_000_000) * UInt64(1 << (attempt - 1)))
             }
+            return StepResult(ok: false, output: "Slack: exhausted retries")
 
         case .createJiraTicket:
             // Forward to JiraSummary API if running (port 37425)
@@ -272,18 +278,24 @@ final class WorkflowEngine {
                 return StepResult(ok: false, output: "No webhook URL configured")
             }
             let payload = context.merging(["workflow": workflowName]) { $1 }
-            do {
-                var req = URLRequest(url: url)
-                req.httpMethod = "POST"
-                req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                req.httpBody = try JSONSerialization.data(withJSONObject: payload)
-                req.timeoutInterval = 15
-                let (_, resp) = try await URLSession.shared.data(for: req)
-                let ok = (resp as? HTTPURLResponse)?.statusCode ?? 0 < 400
-                return StepResult(ok: ok, output: ok ? "Webhook delivered" : "Webhook HTTP error")
-            } catch {
-                return StepResult(ok: false, output: "Webhook error: \(error.localizedDescription)")
+            // Retry up to 3 times with exponential backoff for transient network failures
+            for attempt in 1...3 {
+                do {
+                    var req = URLRequest(url: url)
+                    req.httpMethod = "POST"
+                    req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    req.httpBody = try JSONSerialization.data(withJSONObject: payload)
+                    req.timeoutInterval = 15
+                    let (_, resp) = try await URLSession.shared.data(for: req)
+                    let ok = (resp as? HTTPURLResponse)?.statusCode ?? 0 < 400
+                    if ok { return StepResult(ok: true, output: "Webhook delivered") }
+                    if attempt == 3 { return StepResult(ok: false, output: "Webhook HTTP error after 3 attempts") }
+                } catch {
+                    if attempt == 3 { return StepResult(ok: false, output: "Webhook error: \(error.localizedDescription)") }
+                }
+                try? await Task.sleep(nanoseconds: UInt64(1_000_000_000) * UInt64(1 << (attempt - 1)))
             }
+            return StepResult(ok: false, output: "Webhook: exhausted retries")
 
         case .wait:
             let seconds = Double(step.config["seconds"] ?? "2") ?? 2.0
