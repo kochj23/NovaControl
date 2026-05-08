@@ -5,7 +5,7 @@
 ![Swift](https://img.shields.io/badge/Swift-5.9-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![API Port](https://img.shields.io/badge/API-port%2037400-purple)
-![Version](https://img.shields.io/badge/version-1.2.0-brightgreen)
+![Version](https://img.shields.io/badge/version-1.3.0-brightgreen)
 
 A macOS menu bar application that consolidates the HTTP APIs of multiple local
 applications into a single unified endpoint. NovaControl reads each app's data
