@@ -375,6 +375,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "NovaControl provides a unified local API for Nova and Claude.";
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "NovaControl uses Shortcuts to control HomeKit scenes.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -463,6 +464,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "NovaControl provides a unified local API for Nova and Claude.";
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "NovaControl uses Shortcuts to control HomeKit scenes.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
