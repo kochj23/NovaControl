@@ -261,6 +261,9 @@ final class NovaAPIServer {
         if method == "GET" && path == "/api/nova/crons" {
             return await handleNovaCrons()
         }
+        if method == "GET" && path == "/api/nova/agents" {
+            return await handleNovaAgents()
+        }
 
         // AI services
         if method == "GET" && path == "/api/ai/status" {
@@ -525,6 +528,31 @@ final class NovaAPIServer {
         return (200, encodable(crons))
     }
 
+    private func handleNovaAgents() async -> (Int, Any) {
+        let agents = await NovaReader.shared.fetchAgents()
+        let dicts = agents.map { agent -> [String: Any] in
+            var d: [String: Any] = [
+                "id": agent.id,
+                "name": agent.name,
+                "status": agent.status,
+                "model": agent.model,
+                "workspace_size": agent.workspaceSize,
+                "channels": agent.channels,
+                "tasks_completed": agent.tasksCompleted,
+                "uptime_s": agent.uptimeSeconds,
+                "healthy": agent.isHealthy
+            ]
+            if let error = agent.lastError { d["last_error"] = error }
+            return d
+        }
+        let healthy = agents.filter(\.isHealthy).count
+        return (200, [
+            "agents": dicts,
+            "healthy": healthy,
+            "total": agents.count
+        ])
+    }
+
     // MARK: - AI Services Handler
 
     private func handleAIStatus() async -> (Int, Any) {
@@ -651,6 +679,7 @@ final class NovaAPIServer {
                 "/api/nova/status":                endpoint("GET", "Nova gateway + memory status"),
                 "/api/nova/memory":                endpoint("GET", "Nova vector memory stats"),
                 "/api/nova/crons":                 endpoint("GET", "Nova cron job list"),
+                "/api/nova/agents":                endpoint("GET", "Multi-agent status (chat, research, home)"),
                 "/api/ai/status":                  endpoint("GET", "AI service availability (Ollama, MLX, etc.)"),
                 "/api/ai/summarize":               endpoint("POST", "Summarize email/text via local LLM {\"content\":\"...\",\"context\":\"...\"}"),
                 "/api/ai/extract-actions":         endpoint("POST", "Extract action items from notes {\"notes\":\"...\"}"),
@@ -983,6 +1012,15 @@ final class NovaAPIServer {
         gauge("novacontrol_nova_gateway",     "Nova gateway online (1=up)", nova.gatewayOnline ? 1 : 0)
         gauge("novacontrol_nova_memories",    "Nova memory store count",    Double(nova.memoriesCount))
         gauge("novacontrol_nova_cron_errors", "Nova cron error count",      Double(nova.crons.filter { $0.status == "error" }.count))
+
+        // Agent metrics
+        let agents = await NovaReader.shared.fetchAgents()
+        gauge("novacontrol_agents_total",   "Total configured agents",     Double(agents.count))
+        gauge("novacontrol_agents_healthy", "Healthy running agents",      Double(agents.filter(\.isHealthy).count))
+        for agent in agents {
+            gauge("novacontrol_agent_tasks", "Tasks completed by agent", Double(agent.tasksCompleted), labels: "agent=\"\(agent.name)\"")
+            gauge("novacontrol_agent_uptime_seconds", "Agent uptime in seconds", Double(agent.uptimeSeconds), labels: "agent=\"\(agent.name)\"")
+        }
 
         lines.append("")  // trailing newline
         return lines.joined(separator: "\n")

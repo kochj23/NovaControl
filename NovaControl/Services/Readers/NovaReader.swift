@@ -129,6 +129,111 @@ actor NovaReader {
         return jobs
     }
 
+    // MARK: - Multi-Agent status
+
+    func fetchAgents() async -> [AgentInfo] {
+        // Query the gateway's agent status endpoint
+        guard let url = URL(string: "http://127.0.0.1:18789/api/agents") else { return [] }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 3.0
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                return fallbackAgents()
+            }
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let agentsDict = json["agents"] as? [String: [String: Any]] {
+                return parseAgentsResponse(agentsDict)
+            }
+            // Try parsing as array
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                return json.compactMap { parseAgentDict($0) }
+            }
+            return fallbackAgents()
+        } catch {
+            return fallbackAgents()
+        }
+    }
+
+    private func parseAgentsResponse(_ agents: [String: [String: Any]]) -> [AgentInfo] {
+        return agents.compactMap { key, value -> AgentInfo? in
+            let status = value["status"] as? String ?? "unknown"
+            let model = value["model"] as? String ?? "unknown"
+            let workspace = value["workspace_size"] as? Int ?? 0
+            let channels = value["channels"] as? [String] ?? []
+            let tasks = value["tasks_completed"] as? Int ?? 0
+            let uptime = value["uptime_s"] as? Int ?? 0
+            let lastError = value["last_error"] as? String
+
+            return AgentInfo(
+                id: key,
+                name: key,
+                status: status,
+                model: model,
+                workspaceSize: workspace,
+                channels: channels,
+                tasksCompleted: tasks,
+                uptimeSeconds: uptime,
+                lastError: lastError
+            )
+        }.sorted { $0.name < $1.name }
+    }
+
+    private func parseAgentDict(_ dict: [String: Any]) -> AgentInfo? {
+        guard let id = dict["id"] as? String ?? dict["name"] as? String else { return nil }
+        return AgentInfo(
+            id: id,
+            name: dict["name"] as? String ?? id,
+            status: dict["status"] as? String ?? "unknown",
+            model: dict["model"] as? String ?? "unknown",
+            workspaceSize: dict["workspace_size"] as? Int ?? 0,
+            channels: dict["channels"] as? [String] ?? [],
+            tasksCompleted: dict["tasks_completed"] as? Int ?? 0,
+            uptimeSeconds: dict["uptime_s"] as? Int ?? 0,
+            lastError: dict["last_error"] as? String
+        )
+    }
+
+    /// Fallback: probe the openclaw CLI for agent info if HTTP endpoint is unavailable
+    private func fallbackAgents() -> [AgentInfo] {
+        let output = runCommand(openclaw, args: ["agent", "list"])
+        guard !output.isEmpty else { return [] }
+
+        var agents: [AgentInfo] = []
+        let lines = output.components(separatedBy: "\n")
+
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.isEmpty else { continue }
+
+            // Parse lines like: "chat  running  ollama/qwen3-next:80b  slack,discord"
+            let cols = trimmed.components(separatedBy: "  ")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+
+            guard cols.count >= 2 else { continue }
+            let name = cols[0]
+            let status = cols.count > 1 ? cols[1] : "unknown"
+            let model = cols.count > 2 ? cols[2] : "unknown"
+            let channels = cols.count > 3 ? cols[3].components(separatedBy: ",") : []
+
+            agents.append(AgentInfo(
+                id: name,
+                name: name,
+                status: status,
+                model: model,
+                workspaceSize: 0,
+                channels: channels,
+                tasksCompleted: 0,
+                uptimeSeconds: 0,
+                lastError: nil
+            ))
+        }
+
+        return agents
+    }
+
     // MARK: - AI services health check
 
     func fetchAIServices() async -> [AIService] {

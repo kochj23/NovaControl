@@ -314,6 +314,55 @@ struct LocalLLM: Identifiable, Codable {
     let detail: String      // extra info (parameter count, quantization, etc.)
 }
 
+// MARK: - Multi-Agent Architecture
+
+struct AgentInfo: Identifiable, Codable {
+    let id: String
+    let name: String
+    let status: String          // "running", "stopped", "error"
+    let model: String
+    let workspaceSize: Int      // bytes
+    let channels: [String]      // channels routed to this agent
+    let tasksCompleted: Int
+    let uptimeSeconds: Int
+    let lastError: String?
+
+    init(id: String, name: String, status: String = "running", model: String = "unknown",
+         workspaceSize: Int = 0, channels: [String] = [], tasksCompleted: Int = 0,
+         uptimeSeconds: Int = 0, lastError: String? = nil) {
+        self.id = id
+        self.name = name
+        self.status = status
+        self.model = model
+        self.workspaceSize = workspaceSize
+        self.channels = channels
+        self.tasksCompleted = tasksCompleted
+        self.uptimeSeconds = uptimeSeconds
+        self.lastError = lastError
+    }
+
+    var isHealthy: Bool {
+        status == "running"
+    }
+
+    var workspaceSizeFormatted: String {
+        let mb = Double(workspaceSize) / 1_048_576
+        if mb >= 1024 {
+            return String(format: "%.1f GB", mb / 1024)
+        }
+        return String(format: "%.0f MB", mb)
+    }
+
+    var uptimeFormatted: String {
+        let hours = uptimeSeconds / 3600
+        let minutes = (uptimeSeconds % 3600) / 60
+        if hours >= 24 {
+            return "\(hours / 24)d \(hours % 24)h"
+        }
+        return "\(hours)h \(minutes)m"
+    }
+}
+
 // MARK: - Topology
 
 struct TopologyConnection: Codable {

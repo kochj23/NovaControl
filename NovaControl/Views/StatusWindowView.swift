@@ -502,6 +502,8 @@ struct NovaTab: View {
             if let nova = data.novaStatus {
                 novaServicesSection
                 Divider()
+                agentsSection
+                Divider()
                 aiServicesSection
                 Divider()
                 novaIdentitySection(nova: nova)
@@ -593,6 +595,51 @@ struct NovaTab: View {
                 .padding(.horizontal, 16)
                 .transition(.opacity)
                 .animation(.easeInOut(duration: 0.2), value: data.novaStackProgress)
+            }
+
+            Spacer().frame(height: 8)
+        }
+    }
+
+    // MARK: Agents
+
+    private var agentsSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Agents")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                Spacer()
+                let running = data.novaAgents.filter(\.isHealthy).count
+                let total = data.novaAgents.count
+                if total > 0 {
+                    Text("\(running)/\(total) healthy")
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(running == total ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
+                        .foregroundColor(running == total ? .green : .orange)
+                        .cornerRadius(4)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 6)
+
+            if data.novaAgents.isEmpty {
+                HStack(spacing: 6) {
+                    Image(systemName: "person.3")
+                        .foregroundColor(.secondary)
+                    Text("No agents detected")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 4)
+            } else {
+                ForEach(data.novaAgents) { agent in
+                    AgentInfoRow(agent: agent)
+                    Divider().padding(.leading, 42)
+                }
             }
 
             Spacer().frame(height: 8)
@@ -692,6 +739,88 @@ struct NovaTab: View {
         let stripped = model.replacingOccurrences(of: "openrouter/", with: "")
         if stripped.count > 18 { return String(stripped.suffix(18)) }
         return stripped
+    }
+}
+
+// MARK: - Agent Info Row
+
+struct AgentInfoRow: View {
+    let agent: AgentInfo
+
+    var statusColor: Color {
+        switch agent.status {
+        case "running": return .green
+        case "stopped": return .gray
+        case "error":   return .red
+        default:        return .secondary
+        }
+    }
+
+    var statusIcon: String {
+        switch agent.status {
+        case "running": return "checkmark.circle.fill"
+        case "stopped": return "pause.circle.fill"
+        case "error":   return "xmark.circle.fill"
+        default:        return "questionmark.circle"
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: statusIcon)
+                .foregroundColor(statusColor)
+                .frame(width: 16)
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(agent.name.capitalized)
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                    Text(agent.model)
+                        .font(.caption2)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .background(Color.purple.opacity(0.12))
+                        .foregroundColor(.purple)
+                        .cornerRadius(3)
+                        .lineLimit(1)
+                }
+                HStack(spacing: 8) {
+                    if !agent.channels.isEmpty {
+                        Label(agent.channels.joined(separator: ", "), systemImage: "arrow.triangle.branch")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                    if agent.workspaceSize > 0 {
+                        Text(agent.workspaceSizeFormatted)
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    Text("\(agent.tasksCompleted) tasks")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    Text(agent.uptimeFormatted)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            Spacer()
+
+            if let error = agent.lastError, !error.isEmpty {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(.yellow)
+                    .font(.caption)
+                    .help(error)
+            }
+
+            Text(agent.status)
+                .font(.caption2)
+                .foregroundColor(statusColor)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 4)
     }
 }
 
