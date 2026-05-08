@@ -9,12 +9,13 @@ struct StatusWindowView: View {
     @State private var selectedTab: Tab = .actionItems
 
     enum Tab: String, CaseIterable {
-        case actionItems = "Action Items"
-        case devices     = "Devices"
-        case system      = "System"
-        case news        = "News"
-        case nova        = "Nova"
-        case health      = "Health"
+        case actionItems  = "Action Items"
+        case devices      = "Devices"
+        case system       = "System"
+        case news         = "News"
+        case nova         = "Nova"
+        case health       = "Health"
+        case diagnostics  = "Diagnostics"
     }
 
     var body: some View {
@@ -106,12 +107,13 @@ struct StatusWindowView: View {
     private var tabContent: some View {
         ScrollView {
             switch selectedTab {
-            case .actionItems: ActionItemsTab()
-            case .devices:     DevicesTab()
-            case .system:      SystemTab()
-            case .news:        NewsTab()
-            case .nova:        NovaTab()
-            case .health:      HealthTab()
+            case .actionItems:  ActionItemsTab()
+            case .devices:      DevicesTab()
+            case .system:       SystemTab()
+            case .news:         NewsTab()
+            case .nova:         NovaTab()
+            case .health:       HealthTab()
+            case .diagnostics:  DiagnosticsTab()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1185,6 +1187,258 @@ struct HealthTab: View {
             Text(text).font(.subheadline)
         }
         .padding(.horizontal, 16).padding(.vertical, 4)
+    }
+}
+
+// MARK: - Diagnostics Tab (Big Brother)
+
+struct DiagnosticsTab: View {
+    @EnvironmentObject var data: DataManager
+    @State private var filterSeverity: String = "all"
+
+    private var filteredEvents: [BBHealEvent] {
+        guard filterSeverity != "all" else { return data.bbEvents }
+        return data.bbEvents.filter { $0.severity == filterSeverity }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            bbHeaderSection
+            if data.bbAlive {
+                Divider()
+                serviceStateSection
+                Divider()
+                eventsSection
+            } else {
+                bigBrotherOffline
+            }
+        }
+        .padding(.vertical, 8)
+    }
+
+    // MARK: Header
+
+    private var bbHeaderSection: some View {
+        HStack(spacing: 12) {
+            Image(systemName: data.bbAlive ? "eye.fill" : "eye.slash")
+                .font(.title2)
+                .foregroundColor(data.bbAlive ? .green : .red)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Big Brother")
+                    .font(.subheadline).fontWeight(.semibold)
+                if let st = data.bbStatus {
+                    Text("v\(st.version) · uptime \(st.uptimeFormatted) · \(st.eventsTotal) events")
+                        .font(.caption).foregroundColor(.secondary)
+                } else {
+                    Text(data.bbAlive ? "Loading…" : "Daemon not running")
+                        .font(.caption).foregroundColor(.secondary)
+                }
+            }
+            Spacer()
+            HStack(spacing: 8) {
+                if let st = data.bbStatus, !st.servicesDown.isEmpty {
+                    Label("\(st.servicesDown.count) down", systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption2)
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Color.red.opacity(0.15))
+                        .foregroundColor(.red)
+                        .cornerRadius(4)
+                }
+                Button {
+                    data.forceCheck()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        data.refreshBigBrother()
+                    }
+                } label: {
+                    Label("Force Check", systemImage: "bolt.fill")
+                        .font(.caption)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(!data.bbAlive)
+
+                Button {
+                    data.refreshBigBrother()
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .buttonStyle(.borderless)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+    }
+
+    // MARK: Service State Grid
+
+    private var serviceStateSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Services")
+                .font(.caption).fontWeight(.semibold).foregroundColor(.secondary)
+                .padding(.horizontal, 16).padding(.top, 6)
+
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 4), spacing: 4) {
+                ForEach(data.bbServiceStates) { svc in
+                    BBServiceRow(state: svc)
+                }
+            }
+            .padding(.horizontal, 16).padding(.bottom, 6)
+        }
+    }
+
+    // MARK: Events
+
+    private var eventsSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("Heal Events")
+                    .font(.caption).fontWeight(.semibold).foregroundColor(.secondary)
+                Spacer()
+                severityPicker
+            }
+            .padding(.horizontal, 16).padding(.vertical, 6)
+
+            if filteredEvents.isEmpty {
+                emptyState(icon: "checkmark.shield.fill", text: "No heal events recorded")
+            } else {
+                ForEach(filteredEvents) { event in
+                    BBEventRow(event: event)
+                    Divider().padding(.leading, 16)
+                }
+            }
+        }
+    }
+
+    private var severityPicker: some View {
+        HStack(spacing: 0) {
+            ForEach(["all", "critical", "warning", "info"], id: \.self) { sev in
+                Button {
+                    filterSeverity = sev
+                } label: {
+                    Text(sev.capitalized)
+                        .font(.caption2)
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .background(filterSeverity == sev ? Color.accentColor.opacity(0.15) : Color.clear)
+                        .foregroundColor(filterSeverity == sev ? .accentColor : .secondary)
+                }
+                .buttonStyle(.borderless)
+            }
+        }
+        .background(Color(NSColor.controlBackgroundColor))
+        .cornerRadius(6)
+        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.2)))
+    }
+
+    // MARK: Offline state
+
+    private var bigBrotherOffline: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "eye.slash")
+                .font(.largeTitle)
+                .foregroundColor(.red)
+            Text("Big Brother is not running")
+                .font(.subheadline).fontWeight(.semibold)
+            Text("Start it with: launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/net.digitalnoise.big-brother.plist")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+    }
+}
+
+// MARK: - Big Brother Event Row
+
+struct BBEventRow: View {
+    let event: BBHealEvent
+
+    var severityColor: Color {
+        switch event.severity {
+        case "critical": return .red
+        case "warning":  return .orange
+        default:         return .green
+        }
+    }
+
+    var severityIcon: String {
+        switch event.severity {
+        case "critical": return "xmark.circle.fill"
+        case "warning":  return "exclamationmark.triangle.fill"
+        default:         return "checkmark.circle.fill"
+        }
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: severityIcon)
+                .foregroundColor(severityColor)
+                .frame(width: 16)
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    if !event.service.isEmpty {
+                        Text(event.service)
+                            .font(.caption2)
+                            .padding(.horizontal, 5).padding(.vertical, 1)
+                            .background(Color.accentColor.opacity(0.12))
+                            .foregroundColor(.accentColor)
+                            .cornerRadius(3)
+                    }
+                    Text(event.formattedTime)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                Text(event.issue)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .lineLimit(2)
+                if !event.fix.isEmpty {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 9))
+                            .foregroundColor(.secondary)
+                        Text(event.fix)
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 5)
+    }
+}
+
+// MARK: - Big Brother Service Row
+
+struct BBServiceRow: View {
+    let state: BBServiceState
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Circle()
+                .fill(state.up ? Color.green : Color.red)
+                .frame(width: 6, height: 6)
+                .shadow(color: (state.up ? Color.green : Color.red).opacity(0.5), radius: 2)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(state.name)
+                    .font(.system(size: 9, weight: .medium))
+                    .lineLimit(1)
+                Text(state.up ? "up" : (state.lastError ?? "down"))
+                    .font(.system(size: 8))
+                    .foregroundColor(state.up ? .secondary : .red)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(5)
+        .background(Color(NSColor.controlBackgroundColor))
+        .cornerRadius(5)
     }
 }
 

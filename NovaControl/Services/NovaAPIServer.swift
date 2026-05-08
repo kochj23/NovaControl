@@ -361,7 +361,32 @@ final class NovaAPIServer {
             return await handleMeetingById(meetingId: meetingId)
         }
 
+        // Big Brother diagnostics proxy — forwards to daemon on :37461
+        if path.hasPrefix("/api/bigbrother") {
+            let bbPath = path.replacingOccurrences(of: "/api/bigbrother", with: "/bb")
+            return await proxyToBigBrother(method: method, path: bbPath, body: body)
+        }
+
         return (404, ["error": "Route not found", "path": path])
+    }
+
+    // MARK: - Big Brother Proxy
+
+    private func proxyToBigBrother(method: String, path: String, body: Data?) async -> (Int, Any) {
+        guard let url = URL(string: "http://127.0.0.1:37461\(path)") else {
+            return (502, ["error": "Big Brother URL invalid"])
+        }
+        var req = URLRequest(url: url, timeoutInterval: 5)
+        req.httpMethod = method
+        if let body = body { req.httpBody = body }
+        do {
+            let (data, resp) = try await URLSession.shared.data(for: req)
+            let status = (resp as? HTTPURLResponse)?.statusCode ?? 200
+            let json = try JSONSerialization.jsonObject(with: data)
+            return (status, json)
+        } catch {
+            return (503, ["error": "Big Brother unreachable", "detail": error.localizedDescription])
+        }
     }
 
     // MARK: - Route Handlers

@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		00D6D8BA09E61CE073E05DE8 /* HomeKitReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42E08BA60666962D5311383C /* HomeKitReader.swift */; };
+		AA1B2C3D4E5F6A7B8C9D0E1F /* BigBrotherReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2C3D4E5F6A7B8C9D0E1F2A /* BigBrotherReader.swift */; };
 		096E0DDECCAD4EB7BFAB5593 /* SystemStatsReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE6CCD454AA2773FB883E74B /* SystemStatsReader.swift */; };
 		0F87BDBFE9FFEBF39187DD18 /* DataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E5C4C76841118DC9CB8E389 /* DataManager.swift */; };
 		1B8D1E48A9573F18932944B6 /* ServiceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3DCDA8C6F876D585F48FEFC /* ServiceModels.swift */; };
@@ -43,6 +44,7 @@
 		1735DFAB6A5BE43416AFDDC3 /* NovaControlTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NovaControlTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2BBE9E16D3E46919A4AFBB31 /* WorkflowEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowEngineTests.swift; sourceTree = "<group>"; };
 		2E4918F8F10027F1E169DB02 /* AIServiceReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIServiceReader.swift; sourceTree = "<group>"; };
+		BB2C3D4E5F6A7B8C9D0E1F2A /* BigBrotherReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BigBrotherReader.swift; sourceTree = "<group>"; };
 		411D79BCF4B02EC2F1038FCC /* NewsSummaryReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewsSummaryReader.swift; sourceTree = "<group>"; };
 		42E08BA60666962D5311383C /* HomeKitReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeKitReader.swift; sourceTree = "<group>"; };
 		4D6D1C4648F18FE85594493B /* MLXCodeReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLXCodeReader.swift; sourceTree = "<group>"; };
@@ -137,6 +139,7 @@
 			isa = PBXGroup;
 			children = (
 				2E4918F8F10027F1E169DB02 /* AIServiceReader.swift */,
+				BB2C3D4E5F6A7B8C9D0E1F2A /* BigBrotherReader.swift */,
 				42E08BA60666962D5311383C /* HomeKitReader.swift */,
 				4D6D1C4648F18FE85594493B /* MLXCodeReader.swift */,
 				411D79BCF4B02EC2F1038FCC /* NewsSummaryReader.swift */,
@@ -255,6 +258,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				24C0EBF951627D4D96D37CDA /* AIServiceReader.swift in Sources */,
+				AA1B2C3D4E5F6A7B8C9D0E1F /* BigBrotherReader.swift in Sources */,
 				0F87BDBFE9FFEBF39187DD18 /* DataManager.swift in Sources */,
 				00D6D8BA09E61CE073E05DE8 /* HomeKitReader.swift in Sources */,
 				8D6197314BAEACA145D657D4 /* MLXCodeReader.swift in Sources */,

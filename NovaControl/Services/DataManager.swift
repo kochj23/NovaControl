@@ -44,15 +44,47 @@ class DataManager: ObservableObject {
     @Published var serviceStatuses: [ServiceInfo] = []
     @Published var lastRefresh: Date = Date()
 
+    // Big Brother
+    @Published var bbStatus: BBStatus?
+    @Published var bbEvents: [BBHealEvent] = []
+    @Published var bbServiceStates: [BBServiceState] = []
+    @Published var bbAlive: Bool = false
+
     private var refreshTimer: Timer?
+    private var bbRefreshTimer: Timer?
 
     private init() {}
 
     func startRefreshing() {
         refresh()
+        refreshBigBrother()
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }
+        // Big Brother refreshes every 15s for responsive diagnostics
+        bbRefreshTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.refreshBigBrother() }
+        }
+    }
+
+    func refreshBigBrother() {
+        Task {
+            async let alive   = BigBrotherReader.shared.isAlive()
+            async let status  = BigBrotherReader.shared.fetchStatus()
+            async let events  = BigBrotherReader.shared.fetchEvents(limit: 100)
+            async let svcStates = BigBrotherReader.shared.fetchServiceStates()
+            let (isAlive, st, evts, svcs) = await (alive, status, events, svcStates)
+            await MainActor.run {
+                self.bbAlive        = isAlive
+                self.bbStatus       = st
+                self.bbEvents       = evts
+                self.bbServiceStates = svcs
+            }
+        }
+    }
+
+    func forceCheck() {
+        Task { await BigBrotherReader.shared.forceCheck() }
     }
 
     func refresh() {

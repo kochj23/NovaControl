@@ -118,6 +118,42 @@ final class SecurityTests: XCTestCase {
         }
     }
 
+    // MARK: - Big Brother API Security
+
+    func testBigBrotherAPIPortIsLoopbackOnly() {
+        // Big Brother diagnostics API must bind to loopback only — port 37461
+        let source = sourceFileContents("BigBrotherReader.swift")
+        guard !source.isEmpty else { return }
+        XCTAssertTrue(source.contains("127.0.0.1"),
+                      "BigBrotherReader must use loopback address only")
+        XCTAssertTrue(source.contains("37461"),
+                      "BigBrotherReader must target port 37461")
+        XCTAssertFalse(source.contains("0.0.0.0"),
+                       "BigBrotherReader must not bind to all interfaces")
+    }
+
+    func testBigBrotherReaderNoHardcodedTokens() {
+        let source = sourceFileContents("BigBrotherReader.swift")
+        guard !source.isEmpty else { return }
+        // Big Brother API requires no auth token — loopback-only security model
+        XCTAssertFalse(source.contains("Authorization:"),
+                       "BigBrotherReader must not send auth headers (loopback only)")
+        XCTAssertFalse(source.contains("Bearer "),
+                       "BigBrotherReader must not use bearer tokens")
+    }
+
+    func testBigBrotherProxyRoutePattern() {
+        // NovaAPIServer must proxy /api/bigbrother → /bb on port 37461
+        let source = sourceFileContents("NovaAPIServer.swift")
+        guard !source.isEmpty else { return }
+        XCTAssertTrue(source.contains("/api/bigbrother"),
+                      "NovaAPIServer must route /api/bigbrother")
+        XCTAssertTrue(source.contains("proxyToBigBrother"),
+                      "NovaAPIServer must have proxyToBigBrother method")
+        XCTAssertTrue(source.contains("127.0.0.1:37461"),
+                      "Proxy must target loopback:37461 only")
+    }
+
     // MARK: - Workflow Template Security
 
     func testWorkflowTemplateVariableEscaping() {

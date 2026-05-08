@@ -20,7 +20,7 @@ metrics -- all without requiring the source applications to be running.
 ```mermaid
 graph TB
     subgraph NovaControl
-        MB[Menu Bar Icon] --> SW[StatusWindowView<br/>6-Tab Dashboard]
+        MB[Menu Bar Icon] --> SW[StatusWindowView<br/>7-Tab Dashboard]
         AD[AppDelegate] --> DM[DataManager<br/>60s auto-refresh]
         AD --> API[NovaAPIServer<br/>NWListener :37400<br/>28 routes / ETag / OpenAPI]
         DM --> WE[WorkflowEngine<br/>Slack / Jira / Email / Webhook]
@@ -36,6 +36,7 @@ graph TB
         DM --> MLR[MLXCodeReader]
         DM --> HKR[HomeKitReader]
         DM --> AIR[AIServiceReader]
+        DM --> BBR[BigBrotherReader<br/>15s refresh]
     end
 
     subgraph Data Sources
@@ -61,12 +62,14 @@ graph TB
         API --> R6[/api/health /metrics /api/docs]
         API --> R7[/api/workflows /api/topology /api/graph]
         API --> R8[/api/homekit/*]
+        API --> R9[/api/bigbrother/* → proxy :37461]
     end
 
     style MB fill:#5535ff,color:#fff
     style API fill:#2a6,color:#fff
     style DM fill:#38d,color:#fff
     style WE fill:#c55,color:#fff
+    style BBR fill:#a35,color:#fff
 ```
 
 ### Data Flow
@@ -89,6 +92,7 @@ metrics from kernel APIs. The data path for each service:
 | MLXCode | HTTP proxy `127.0.0.1:37422` | 60s |
 | HomeKit | Shortcuts CLI (`/usr/bin/shortcuts run`) | 5-min cache |
 | AI Summarization | Ollama `/api/generate` (nova:latest model) | on-demand |
+| Big Brother | HTTP `127.0.0.1:37461/bb/*` (diagnostics daemon) | 15s |
 
 ---
 
@@ -123,7 +127,7 @@ A single HTTP server on `127.0.0.1:37400` using Apple's Network framework
 header computed via SHA-256 over sorted-key JSON serialization, so clients can
 send `If-None-Match` and receive `304 Not Modified` when data has not changed.
 
-### Menu Bar Dashboard (6-Tab SwiftUI Window)
+### Menu Bar Dashboard (7-Tab SwiftUI Window)
 
 A floating status window accessible from the menu bar icon. Tabs:
 
@@ -143,6 +147,10 @@ A floating status window accessible from the menu bar icon. Tabs:
   (Ollama vs MLX), system pressure gauges (CPU, RAM, disk R/W), and an
   "Attention Required" section surfacing open action items, cron errors,
   and active security threats.
+- **Diagnostics** -- Big Brother daemon status (uptime, events total, services
+  down), per-service health grid with restart counts, and a filterable
+  heal-event feed (critical / warning / info) showing what broke and how it
+  was fixed. Includes a "Force Check" button to trigger an immediate sweep.
 
 ### Health Monitoring
 

@@ -283,4 +283,115 @@ final class ServiceModelsTests: XCTestCase {
         XCTAssertEqual(decoded.title, "Test Article")
         XCTAssertEqual(decoded.category, "technology")
     }
+
+    // MARK: - BBHealEvent
+
+    func testBBHealEventFromDict() {
+        let dict: [String: Any] = [
+            "ts": "2026-05-08T13:00:00.000Z",
+            "severity": "critical",
+            "issue": "Gateway DOWN",
+            "fix": "Restarted gateway",
+            "service": "Gateway",
+        ]
+        let event = BBHealEvent(from: dict)
+        XCTAssertEqual(event.severity, "critical")
+        XCTAssertEqual(event.issue, "Gateway DOWN")
+        XCTAssertEqual(event.fix, "Restarted gateway")
+        XCTAssertEqual(event.service, "Gateway")
+    }
+
+    func testBBHealEventFromEmptyDict() {
+        let event = BBHealEvent(from: [:])
+        XCTAssertEqual(event.severity, "info")
+        XCTAssertEqual(event.issue, "")
+        XCTAssertEqual(event.fix, "")
+        XCTAssertEqual(event.service, "")
+    }
+
+    func testBBHealEventSeverityColors() {
+        let critical = BBHealEvent(from: ["severity": "critical"])
+        XCTAssertEqual(critical.severityColor, "red")
+
+        let warning = BBHealEvent(from: ["severity": "warning"])
+        XCTAssertEqual(warning.severityColor, "orange")
+
+        let info = BBHealEvent(from: ["severity": "info"])
+        XCTAssertEqual(info.severityColor, "green")
+    }
+
+    func testBBHealEventFormattedTimeFallback() {
+        let event = BBHealEvent(from: ["ts": "2026-05-08T13:45:22.000Z"])
+        XCTAssertFalse(event.formattedTime.isEmpty)
+    }
+
+    func testBBHealEventFormattedTimeInvalidTs() {
+        let event = BBHealEvent(from: ["ts": "not-a-date"])
+        XCTAssertEqual(event.formattedTime, "not-a-date")
+    }
+
+    // MARK: - BBStatus
+
+    func testBBStatusDecoding() throws {
+        let json = """
+        {
+            "daemon": "big-brother",
+            "version": "1.0.0",
+            "pid": 12345,
+            "uptime_s": 3661,
+            "events_total": 7,
+            "services_down": ["MLX Server"],
+            "pending_restarts": [],
+            "alerted_count": 2
+        }
+        """.data(using: .utf8)!
+        let status = try JSONDecoder().decode(BBStatus.self, from: json)
+        XCTAssertEqual(status.daemon, "big-brother")
+        XCTAssertEqual(status.version, "1.0.0")
+        XCTAssertEqual(status.pid, 12345)
+        XCTAssertEqual(status.uptimeS, 3661)
+        XCTAssertEqual(status.eventsTotal, 7)
+        XCTAssertEqual(status.servicesDown, ["MLX Server"])
+        XCTAssertTrue(status.pendingRestarts.isEmpty)
+        XCTAssertEqual(status.alertedCount, 2)
+    }
+
+    func testBBStatusUptimeFormatted() throws {
+        let json = """
+        {"daemon":"bb","version":"1","pid":1,"uptime_s":3661,
+         "events_total":0,"services_down":[],"pending_restarts":[],"alerted_count":0}
+        """.data(using: .utf8)!
+        let status = try JSONDecoder().decode(BBStatus.self, from: json)
+        XCTAssertEqual(status.uptimeFormatted, "1h 1m")
+    }
+
+    func testBBStatusUptimeFormattedDays() throws {
+        let json = """
+        {"daemon":"bb","version":"1","pid":1,"uptime_s":90061,
+         "events_total":0,"services_down":[],"pending_restarts":[],"alerted_count":0}
+        """.data(using: .utf8)!
+        let status = try JSONDecoder().decode(BBStatus.self, from: json)
+        XCTAssertTrue(status.uptimeFormatted.contains("d"))
+    }
+
+    // MARK: - BBServiceState
+
+    func testBBServiceStateUp() {
+        let state = BBServiceState(id: "gateway", name: "Gateway", up: true,
+                                   lastError: nil, restarts: 0)
+        XCTAssertEqual(state.id, "gateway")
+        XCTAssertEqual(state.name, "Gateway")
+        XCTAssertTrue(state.up)
+        XCTAssertNil(state.lastError)
+        XCTAssertEqual(state.statusColor, "green")
+    }
+
+    func testBBServiceStateDown() {
+        let state = BBServiceState(id: "mlx", name: "MLX Server", up: false,
+                                   lastError: "Not responding on :5050", restarts: 2)
+        XCTAssertFalse(state.up)
+        XCTAssertEqual(state.lastError, "Not responding on :5050")
+        XCTAssertEqual(state.restarts, 2)
+        XCTAssertEqual(state.statusColor, "red")
+    }
 }

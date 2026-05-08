@@ -400,6 +400,82 @@ struct GoalInsights: Codable {
     let healthCorrelation: String?
 }
 
+// MARK: - Big Brother Models
+
+struct BBHealEvent: Identifiable, Codable {
+    let id: UUID
+    let ts: String
+    let severity: String     // critical / warning / info
+    let issue: String
+    let fix: String
+    let service: String
+
+    init(from dict: [String: Any]) {
+        self.id       = UUID()
+        self.ts       = dict["ts"] as? String ?? ""
+        self.severity = dict["severity"] as? String ?? "info"
+        self.issue    = dict["issue"] as? String ?? ""
+        self.fix      = dict["fix"] as? String ?? ""
+        self.service  = dict["service"] as? String ?? ""
+    }
+
+    var severityColor: String {
+        switch severity {
+        case "critical": return "red"
+        case "warning":  return "orange"
+        default:         return "green"
+        }
+    }
+
+    var formattedTime: String {
+        let fmt = ISO8601DateFormatter()
+        fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let d = fmt.date(from: ts) {
+            let f = DateFormatter()
+            f.dateFormat = "MMM d HH:mm:ss"
+            return f.string(from: d)
+        }
+        return String(ts.prefix(19))
+    }
+}
+
+struct BBStatus: Codable {
+    let daemon: String
+    let version: String
+    let pid: Int
+    let uptimeS: Int
+    let eventsTotal: Int
+    let servicesDown: [String]
+    let pendingRestarts: [String]
+    let alertedCount: Int
+
+    enum CodingKeys: String, CodingKey {
+        case daemon, version, pid
+        case uptimeS        = "uptime_s"
+        case eventsTotal    = "events_total"
+        case servicesDown   = "services_down"
+        case pendingRestarts = "pending_restarts"
+        case alertedCount   = "alerted_count"
+    }
+
+    var uptimeFormatted: String {
+        let h = uptimeS / 3600
+        let m = (uptimeS % 3600) / 60
+        if h >= 24 { return "\(h / 24)d \(h % 24)h" }
+        return "\(h)h \(m)m"
+    }
+}
+
+struct BBServiceState: Identifiable {
+    let id: String
+    let name: String
+    let up: Bool
+    let lastError: String?
+    let restarts: Int
+
+    var statusColor: String { up ? "green" : "red" }
+}
+
 // MARK: - News Categories
 
 enum NewsCategory: String, CaseIterable, Codable {
