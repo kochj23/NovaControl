@@ -13,6 +13,10 @@ files directly, exposes everything on `localhost:37400`, and provides a SwiftUI
 dashboard with health monitoring, workflow automation, and Prometheus-compatible
 metrics -- all without requiring the source applications to be running.
 
+**v1.3.0 adds Plex media server status, iCal/ICS calendar reading, and a
+HealthKit data snapshot endpoint.** All Nova scripts that previously called
+port 37421 (OneOnOne) have been migrated to port 37400.
+
 ---
 
 ## Architecture
@@ -22,7 +26,7 @@ graph TB
     subgraph NovaControl
         MB[Menu Bar Icon] --> SW[StatusWindowView<br/>7-Tab Dashboard]
         AD[AppDelegate] --> DM[DataManager<br/>60s auto-refresh]
-        AD --> API[NovaAPIServer<br/>NWListener :37400<br/>28 routes / ETag / OpenAPI]
+        AD --> API[NovaAPIServer<br/>NWListener :37400<br/>44+ routes / ETag / OpenAPI]
         DM --> WE[WorkflowEngine<br/>Slack / Jira / Email / Webhook]
     end
 
@@ -37,6 +41,9 @@ graph TB
         DM --> HKR[HomeKitReader]
         DM --> AIR[AIServiceReader]
         DM --> BBR[BigBrotherReader<br/>15s refresh]
+        DM --> PLR[PlexReader ★ new]
+        DM --> CAL[CalendarReader ★ new]
+        DM --> HLR[HealthKitReader ★ new]
     end
 
     subgraph Data Sources
@@ -51,6 +58,9 @@ graph TB
         MLR -->|HTTP proxy| MLXC[MLXCode :37422]
         HKR -->|Shortcuts CLI| HK[HomeKit Scenes]
         AIR -->|HTTP| OLL
+        PLR -->|HTTP + token| PLEX[Synology Plex :32400]
+        CAL -->|ICS URL from Keychain| ICAL[iCal / CalDAV Feed]
+        HLR -->|JSON fallback| HDF[~/.openclaw/private/health/latest.json]
     end
 
     subgraph API Routes
@@ -63,6 +73,9 @@ graph TB
         API --> R7[/api/workflows /api/topology /api/graph]
         API --> R8[/api/homekit/*]
         API --> R9[/api/bigbrother/* → proxy :37461]
+        API --> R10[/api/plex/* ★ new]
+        API --> R11[/api/calendar/* ★ new]
+        API --> R12[/api/health/snapshot ★ new]
     end
 
     style MB fill:#5535ff,color:#fff
@@ -70,6 +83,9 @@ graph TB
     style DM fill:#38d,color:#fff
     style WE fill:#c55,color:#fff
     style BBR fill:#a35,color:#fff
+    style PLR fill:#e6a817,color:#000
+    style CAL fill:#e6a817,color:#000
+    style HLR fill:#e6a817,color:#000
 ```
 
 ### Data Flow
@@ -93,34 +109,43 @@ metrics from kernel APIs. The data path for each service:
 | HomeKit | Shortcuts CLI (`/usr/bin/shortcuts run`) | 5-min cache |
 | AI Summarization | Ollama `/api/generate` (nova:latest model) | on-demand |
 | Big Brother | HTTP `127.0.0.1:37461/bb/*` (diagnostics daemon) | 15s |
+| Plex | HTTP `192.168.1.10:32400` — token loaded from macOS Keychain | on-demand |
+| Calendar | ICS URL loaded from macOS Keychain → parsed locally | on-demand |
+| HealthKit | `~/.openclaw/private/health/latest.json` (iOS export fallback) | on-demand |
 
 ---
 
 ## What It Replaces
 
-NovaControl consolidates five separate app APIs into one port. The original
-apps no longer need to run just to give an AI assistant API access to their
-data.
+NovaControl consolidates multiple separate app APIs and data sources into one
+port. The original apps no longer need to run just to give an AI assistant
+API access to their data.
 
-| App | Original Port | NovaControl Route Prefix |
-|-----|---------------|--------------------------|
+| App / Service | Original Port | NovaControl Route Prefix |
+|---------------|---------------|--------------------------|
 | OneOnOne | 37421 | `/api/oneonone/*` |
 | HomeKitControl | 37432 | `/api/homekit/*` |
 | NMAPScanner | 37423 | `/api/nmap/*` |
 | RsyncGUI | 37424 | `/api/rsync/*` |
 | TopGUI | 37443 | `/api/system/*` |
 | News Summary | 37438 | `/api/news/*` |
+| Plex Media Server | external | `/api/plex/*` |
+| iCal / CalDAV | external | `/api/calendar/*` |
+| HealthKit / iOS export | local file | `/api/health/snapshot` |
 
 Additional routes exist for Nova/OpenClaw AI services (`/api/nova/*`,
 `/api/ai/*`, `/api/mlxcode/*`), HomeKit scene execution, AI-powered
 summarization, health monitoring, workflow automation, topology mapping,
 content graphs, and Prometheus metrics export.
 
+All Nova scripts that previously called OneOnOne on port 37421 have been
+migrated to port 37400.
+
 ---
 
 ## Features
 
-### Unified API Gateway (28 Endpoints)
+### Unified API Gateway (44+ Endpoints)
 
 A single HTTP server on `127.0.0.1:37400` using Apple's Network framework
 (`NWListener`). All routes return JSON. Every GET response includes an `ETag`
@@ -195,7 +220,7 @@ novacontrol_nova_memories, novacontrol_nova_cron_errors
 
 ### OpenAPI 3.0 Documentation
 
-`GET /api/docs` returns a machine-readable OpenAPI 3.0.3 spec covering all 28
+`GET /api/docs` returns a machine-readable OpenAPI 3.0.3 spec covering all
 endpoints. Compatible with Swagger UI, Postman, and any OpenAPI toolchain.
 
 ### Content Graph
@@ -341,6 +366,66 @@ curl -X POST http://127.0.0.1:37400/api/workflows/daily-action-summary-email/run
 curl http://127.0.0.1:37400/api/workflows/runs
 ```
 
+### Plex
+
+PlexReader connects to the Plex Media Server using a token stored in macOS
+Keychain. Server address defaults to `192.168.1.10:32400` (Synology NAS).
+
+```bash
+curl http://127.0.0.1:37400/api/plex/status
+curl http://127.0.0.1:37400/api/plex/playing
+curl http://127.0.0.1:37400/api/plex/ondeck
+curl http://127.0.0.1:37400/api/plex/ondeck?limit=5
+curl http://127.0.0.1:37400/api/plex/recent
+curl http://127.0.0.1:37400/api/plex/recent?limit=20
+curl http://127.0.0.1:37400/api/plex/library
+```
+
+| Endpoint | Description |
+|----------|-------------|
+| `/api/plex/status` | Server version, active streams, library summary |
+| `/api/plex/playing` | All currently active playback sessions |
+| `/api/plex/ondeck` | On-deck items (in-progress; `limit` query param, default 10) |
+| `/api/plex/recent` | Recently added items across all libraries (`limit` param, default 10) |
+| `/api/plex/library` | Per-library item counts and metadata |
+
+### Calendar
+
+CalendarReader fetches an ICS URL stored in macOS Keychain under the key
+`NovaControl.CalendarURL` and parses events locally — no calendar app needs
+to be running.
+
+```bash
+curl http://127.0.0.1:37400/api/calendar/today
+curl http://127.0.0.1:37400/api/calendar/upcoming
+curl http://127.0.0.1:37400/api/calendar/upcoming?minutes=60
+curl http://127.0.0.1:37400/api/calendar/events
+curl http://127.0.0.1:37400/api/calendar/events?days=14
+```
+
+| Endpoint | Description |
+|----------|-------------|
+| `/api/calendar/today` | Today's and tomorrow's events |
+| `/api/calendar/upcoming` | Events starting within N minutes (default 30) |
+| `/api/calendar/events` | All events in the next N days (default 7) |
+
+### HealthKit
+
+`GET /api/health/snapshot` returns a health data snapshot. Because HealthKit
+on macOS requires Mac App Store entitlement approval, this endpoint first
+attempts to serve a cached JSON export at
+`~/.openclaw/private/health/latest.json` (written by the iPhone Health app
+or a HealthKit export tool). If native HealthKit access is available (macOS
+13+), it is also attempted and the result is written back to the cache file.
+
+```bash
+curl http://127.0.0.1:37400/api/health/snapshot
+```
+
+Response includes a `source` field indicating `"cached_ios_export"` or
+`"healthkit_native"`. If no data is available, the response is HTTP 404 with
+a hint on how to export data from the Health app.
+
 ---
 
 ## Installation
@@ -384,10 +469,10 @@ Or open `NovaControl.xcodeproj` in Xcode and press Cmd+B.
 NovaControl/
 +-- NovaControlApp.swift              App entry point, NSStatusItem menu bar setup
 +-- Models/
-|   +-- ServiceModels.swift           Codable models for all 7 service domains
+|   +-- ServiceModels.swift           Codable models for all service domains
 +-- Services/
-|   +-- DataManager.swift             @MainActor ObservableObject, 60s timer, 16 async data fetches
-|   +-- NovaAPIServer.swift           NWListener HTTP server, 28 routes, ETag, OpenAPI, Prometheus
+|   +-- DataManager.swift             @MainActor ObservableObject, 60s timer, async data fetches
+|   +-- NovaAPIServer.swift           NWListener HTTP server, 44+ routes, ETag, OpenAPI, Prometheus
 |   +-- WorkflowEngine.swift          State machine: triggers, steps, run history, Slack/Jira/email
 |   +-- Readers/
 |       +-- OneOnOneReader.swift       Reads meetings, action items, people, goals from JSON
@@ -397,8 +482,11 @@ NovaControl/
 |       +-- NewsSummaryReader.swift    Reads articles from JSON, filters by category/favorites
 |       +-- NovaReader.swift           Probes OpenClaw gateway/memory, Ollama, MLX, cron parsing
 |       +-- MLXCodeReader.swift        Proxies MLXCode HTTP API on port 37422
+|       +-- PlexReader.swift           Plex Media Server: status, now playing, on deck, recent, library
+|       +-- CalendarReader.swift       ICS/CalDAV feed parser: today, upcoming, events by date range
+|       +-- HealthKitReader.swift      HealthKit snapshot; falls back to ~/.openclaw/private/health/
 +-- Views/
-|   +-- StatusWindowView.swift         6-tab SwiftUI dashboard with 12 sub-views
+|   +-- StatusWindowView.swift         7-tab SwiftUI dashboard
 +-- Resources/
     +-- NovaControl.entitlements       No sandbox, network server + client entitlements
 ```
@@ -435,9 +523,12 @@ NovaControl is designed for local-only operation. It is not a network service.
   It is never exposed to the local network or the internet.
 - **Read-only data access**: All readers only read app data files. NovaControl
   never writes to another application's data store.
-- **No credentials stored**: NovaControl does not store API keys, passwords,
-  or tokens. The Slack token for workflow automation is read at runtime from
-  the OpenClaw configuration file (`~/.openclaw/openclaw.json`).
+- **Credentials in macOS Keychain**: All tokens and URLs that require
+  credentials are stored in macOS Keychain and loaded at runtime via the
+  Security framework. This includes the Plex token (`NovaControl.PlexToken`),
+  the Calendar ICS URL (`NovaControl.CalendarURL`), and the Slack token for
+  workflow automation (read from `~/.openclaw/openclaw.json`). Nothing is
+  hardcoded or stored in UserDefaults.
 - **No outbound network requests** (except workflows): The core data
   collection is entirely local. Outbound HTTP calls only occur when a
   workflow step explicitly sends to Slack, Jira, or a webhook.
@@ -489,6 +580,21 @@ and POST to `/api/graph/ingest` to populate the database.
 ---
 
 ## Changelog
+
+### v1.3.0 (May 2026)
+
+- **PlexReader** — five new endpoints for Plex Media Server integration:
+  status, now playing, on deck, recently added, and per-library summary.
+  Plex token loaded from macOS Keychain at runtime.
+- **CalendarReader** — three new calendar endpoints: today/tomorrow events,
+  upcoming events within N minutes, and events across a date range. ICS URL
+  loaded from macOS Keychain; parsed entirely locally with no calendar app
+  dependency.
+- **HealthKitReader** — `/api/health/snapshot` endpoint serving iOS HealthKit
+  export data from `~/.openclaw/private/health/latest.json`; falls through
+  to native HealthKit on macOS 13+ if the entitlement is available.
+- All Nova scripts migrated from OneOnOne port 37421 to NovaControl port 37400.
+- Route count updated from 28 to 44+.
 
 ### v1.1.0 (April 2026)
 
