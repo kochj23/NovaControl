@@ -8,12 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		00D6D8BA09E61CE073E05DE8 /* HomeKitReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42E08BA60666962D5311383C /* HomeKitReader.swift */; };
-		AA1B2C3D4E5F6A7B8C9D0E1F /* BigBrotherReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2C3D4E5F6A7B8C9D0E1F2A /* BigBrotherReader.swift */; };
 		096E0DDECCAD4EB7BFAB5593 /* SystemStatsReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE6CCD454AA2773FB883E74B /* SystemStatsReader.swift */; };
 		0F87BDBFE9FFEBF39187DD18 /* DataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E5C4C76841118DC9CB8E389 /* DataManager.swift */; };
 		1B8D1E48A9573F18932944B6 /* ServiceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3DCDA8C6F876D585F48FEFC /* ServiceModels.swift */; };
 		24C0EBF951627D4D96D37CDA /* AIServiceReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E4918F8F10027F1E169DB02 /* AIServiceReader.swift */; };
 		4742CFE946EC48AFCE72EA11 /* NovaReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 755C33F71A4D361ACF3A01E2 /* NovaReader.swift */; };
+		4CF1A131ECF8A44C6406E2C6 /* HealthKitReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2D123A8DFB3987B64F7FBD1 /* HealthKitReader.swift */; };
 		50F94FD110E839EDE6CA29D8 /* NovaAPIServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A296C3A5EB2693A8AC15C753 /* NovaAPIServer.swift */; };
 		69557E2DD01CE9312C3FB00A /* RsyncReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5C3EE0E08A946C0527A3F81 /* RsyncReader.swift */; };
 		743E57A4DDA3A03808ABE199 /* ServiceModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC8DD0700535E73FF3EA2B5D /* ServiceModelsTests.swift */; };
@@ -21,10 +21,13 @@
 		7FE6401696EF19333E3E6BBF /* NewsSummaryReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 411D79BCF4B02EC2F1038FCC /* NewsSummaryReader.swift */; };
 		8D6197314BAEACA145D657D4 /* MLXCodeReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D6D1C4648F18FE85594493B /* MLXCodeReader.swift */; };
 		8FE8D35F447C93F1BEA737D5 /* NovaControlApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60508F126E68C7A5109B2BE2 /* NovaControlApp.swift */; };
+		92835BDCEDAF07401CEE8E6B /* CalendarReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA7BB4A054CF9AC46995F460 /* CalendarReader.swift */; };
 		B1EE9502C53321556030A9F9 /* WorkflowEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BBE9E16D3E46919A4AFBB31 /* WorkflowEngineTests.swift */; };
 		B3A3181C605DFB17081072CF /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 86F58176921801959333C12F /* IOKit.framework */; };
 		B5CEC5646C73F238C1EA254C /* SecurityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85365DE4E096ADDA9B8DE34D /* SecurityTests.swift */; };
 		B89C4467B809069A5C0C2832 /* NMAPReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBD791C1FD27ECC9AFA3185F /* NMAPReader.swift */; };
+		BE1727BD90C82D8886E5973F /* BigBrotherReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A832ED10546B7242DD685A3 /* BigBrotherReader.swift */; };
+		BE354CBA953C8E0FFFB94DA9 /* PlexReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04C3BE6910ABCA91E72BF2FB /* PlexReader.swift */; };
 		D70E7C85821F85491FD6B54C /* WorkflowEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E9F0F3EC7774CB1146964F0 /* WorkflowEngine.swift */; };
 		E3C88C45BA35DA4CF0B6502B /* StatusWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 939FBBCC25F92AA1ECFE6535 /* StatusWindowView.swift */; };
 /* End PBXBuildFile section */
@@ -40,11 +43,11 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		04C3BE6910ABCA91E72BF2FB /* PlexReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlexReader.swift; sourceTree = "<group>"; };
 		0E5C4C76841118DC9CB8E389 /* DataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataManager.swift; sourceTree = "<group>"; };
 		1735DFAB6A5BE43416AFDDC3 /* NovaControlTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NovaControlTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2BBE9E16D3E46919A4AFBB31 /* WorkflowEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowEngineTests.swift; sourceTree = "<group>"; };
 		2E4918F8F10027F1E169DB02 /* AIServiceReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIServiceReader.swift; sourceTree = "<group>"; };
-		BB2C3D4E5F6A7B8C9D0E1F2A /* BigBrotherReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BigBrotherReader.swift; sourceTree = "<group>"; };
 		411D79BCF4B02EC2F1038FCC /* NewsSummaryReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewsSummaryReader.swift; sourceTree = "<group>"; };
 		42E08BA60666962D5311383C /* HomeKitReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeKitReader.swift; sourceTree = "<group>"; };
 		4D6D1C4648F18FE85594493B /* MLXCodeReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLXCodeReader.swift; sourceTree = "<group>"; };
@@ -55,11 +58,14 @@
 		8E9F0F3EC7774CB1146964F0 /* WorkflowEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowEngine.swift; sourceTree = "<group>"; };
 		90A30D3290D5F150B5BCAF55 /* NovaControl.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NovaControl.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		939FBBCC25F92AA1ECFE6535 /* StatusWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusWindowView.swift; sourceTree = "<group>"; };
+		9A832ED10546B7242DD685A3 /* BigBrotherReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BigBrotherReader.swift; sourceTree = "<group>"; };
 		A296C3A5EB2693A8AC15C753 /* NovaAPIServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaAPIServer.swift; sourceTree = "<group>"; };
+		BA7BB4A054CF9AC46995F460 /* CalendarReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarReader.swift; sourceTree = "<group>"; };
 		CC8DD0700535E73FF3EA2B5D /* ServiceModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceModelsTests.swift; sourceTree = "<group>"; };
 		CE6CCD454AA2773FB883E74B /* SystemStatsReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemStatsReader.swift; sourceTree = "<group>"; };
 		D5C3EE0E08A946C0527A3F81 /* RsyncReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RsyncReader.swift; sourceTree = "<group>"; };
 		E01F37A38EBADAD85E2BC764 /* OneOnOneReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OneOnOneReader.swift; sourceTree = "<group>"; };
+		E2D123A8DFB3987B64F7FBD1 /* HealthKitReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitReader.swift; sourceTree = "<group>"; };
 		F3DCDA8C6F876D585F48FEFC /* ServiceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceModels.swift; sourceTree = "<group>"; };
 		FBD791C1FD27ECC9AFA3185F /* NMAPReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NMAPReader.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -139,13 +145,16 @@
 			isa = PBXGroup;
 			children = (
 				2E4918F8F10027F1E169DB02 /* AIServiceReader.swift */,
-				BB2C3D4E5F6A7B8C9D0E1F2A /* BigBrotherReader.swift */,
+				9A832ED10546B7242DD685A3 /* BigBrotherReader.swift */,
+				BA7BB4A054CF9AC46995F460 /* CalendarReader.swift */,
+				E2D123A8DFB3987B64F7FBD1 /* HealthKitReader.swift */,
 				42E08BA60666962D5311383C /* HomeKitReader.swift */,
 				4D6D1C4648F18FE85594493B /* MLXCodeReader.swift */,
 				411D79BCF4B02EC2F1038FCC /* NewsSummaryReader.swift */,
 				FBD791C1FD27ECC9AFA3185F /* NMAPReader.swift */,
 				755C33F71A4D361ACF3A01E2 /* NovaReader.swift */,
 				E01F37A38EBADAD85E2BC764 /* OneOnOneReader.swift */,
+				04C3BE6910ABCA91E72BF2FB /* PlexReader.swift */,
 				D5C3EE0E08A946C0527A3F81 /* RsyncReader.swift */,
 				CE6CCD454AA2773FB883E74B /* SystemStatsReader.swift */,
 			);
@@ -258,8 +267,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				24C0EBF951627D4D96D37CDA /* AIServiceReader.swift in Sources */,
-				AA1B2C3D4E5F6A7B8C9D0E1F /* BigBrotherReader.swift in Sources */,
+				BE1727BD90C82D8886E5973F /* BigBrotherReader.swift in Sources */,
+				92835BDCEDAF07401CEE8E6B /* CalendarReader.swift in Sources */,
 				0F87BDBFE9FFEBF39187DD18 /* DataManager.swift in Sources */,
+				4CF1A131ECF8A44C6406E2C6 /* HealthKitReader.swift in Sources */,
 				00D6D8BA09E61CE073E05DE8 /* HomeKitReader.swift in Sources */,
 				8D6197314BAEACA145D657D4 /* MLXCodeReader.swift in Sources */,
 				B89C4467B809069A5C0C2832 /* NMAPReader.swift in Sources */,
@@ -268,6 +279,7 @@
 				8FE8D35F447C93F1BEA737D5 /* NovaControlApp.swift in Sources */,
 				4742CFE946EC48AFCE72EA11 /* NovaReader.swift in Sources */,
 				76C84F6941929AB8A7474734 /* OneOnOneReader.swift in Sources */,
+				BE354CBA953C8E0FFFB94DA9 /* PlexReader.swift in Sources */,
 				69557E2DD01CE9312C3FB00A /* RsyncReader.swift in Sources */,
 				1B8D1E48A9573F18932944B6 /* ServiceModels.swift in Sources */,
 				E3C88C45BA35DA4CF0B6502B /* StatusWindowView.swift in Sources */,
@@ -374,8 +386,8 @@
 				DEVELOPMENT_TEAM = QRRCB8HB3W;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "NovaControl reads health data so Nova can track sleep, HRV, and activity.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "NovaControl provides a unified local API for Nova and Claude.";
-				INFOPLIST_KEY_NSAppleEventsUsageDescription = "NovaControl uses Shortcuts to control HomeKit scenes.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -463,8 +475,8 @@
 				DEVELOPMENT_TEAM = QRRCB8HB3W;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "NovaControl reads health data so Nova can track sleep, HRV, and activity.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "NovaControl provides a unified local API for Nova and Claude.";
-				INFOPLIST_KEY_NSAppleEventsUsageDescription = "NovaControl uses Shortcuts to control HomeKit scenes.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",

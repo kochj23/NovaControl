@@ -367,6 +367,43 @@ final class NovaAPIServer {
             return await proxyToBigBrother(method: method, path: bbPath, body: body)
         }
 
+        // ── Plex routes ──────────────────────────────────────────────────────
+        if method == "GET" && path == "/api/plex/status" {
+            return await handlePlexStatus()
+        }
+        if method == "GET" && path == "/api/plex/playing" {
+            return await handlePlexPlaying()
+        }
+        if method == "GET" && path == "/api/plex/ondeck" {
+            let limit = Int(query["limit"] ?? "10") ?? 10
+            return await handlePlexOnDeck(limit: limit)
+        }
+        if method == "GET" && path == "/api/plex/recent" {
+            let limit = Int(query["limit"] ?? "10") ?? 10
+            return await handlePlexRecentlyAdded(limit: limit)
+        }
+        if method == "GET" && path == "/api/plex/library" {
+            return await handlePlexLibrary()
+        }
+
+        // ── Calendar routes ──────────────────────────────────────────────────
+        if method == "GET" && path == "/api/calendar/today" {
+            return await handleCalendarToday()
+        }
+        if method == "GET" && path == "/api/calendar/upcoming" {
+            let minutes = Int(query["minutes"] ?? "30") ?? 30
+            return await handleCalendarUpcoming(withinMinutes: minutes)
+        }
+        if method == "GET" && path == "/api/calendar/events" {
+            let days = Int(query["days"] ?? "7") ?? 7
+            return await handleCalendarEvents(days: days)
+        }
+
+        // ── HealthKit routes ─────────────────────────────────────────────────
+        if method == "GET" && path == "/api/health/snapshot" {
+            return await handleHealthSnapshot()
+        }
+
         return (404, ["error": "Route not found", "path": path])
     }
 
@@ -1117,5 +1154,118 @@ final class NovaAPIServer {
             }
             connection.cancel()
         })
+    }
+
+    // MARK: - Plex Handlers
+
+    private func handlePlexStatus() async -> (Int, Any) {
+        let status = await PlexReader.shared.serverStatus()
+        return (200, status)
+    }
+
+    private func handlePlexPlaying() async -> (Int, Any) {
+        let sessions = await PlexReader.shared.nowPlaying()
+        return (200, ["sessions": sessions, "count": sessions.count])
+    }
+
+    private func handlePlexOnDeck(limit: Int) async -> (Int, Any) {
+        let items = await PlexReader.shared.onDeck(limit: limit)
+        return (200, ["items": items, "count": items.count])
+    }
+
+    private func handlePlexRecentlyAdded(limit: Int) async -> (Int, Any) {
+        let items = await PlexReader.shared.recentlyAdded(limit: limit)
+        return (200, ["items": items, "count": items.count])
+    }
+
+    private func handlePlexLibrary() async -> (Int, Any) {
+        let summary = await PlexReader.shared.librarySummary()
+        return (200, summary)
+    }
+
+    // MARK: - Calendar Handlers
+
+    private func handleCalendarToday() async -> (Int, Any) {
+        let (today, tomorrow) = await CalendarReader.shared.todayAndTomorrow()
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let encode = { (events: [CalendarEvent]) -> [[String: Any]] in
+            events.compactMap { event -> [String: Any]? in
+                guard let data = try? encoder.encode(event),
+                      let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+                return dict
+            }
+        }
+        return (200, [
+            "today": encode(today),
+            "tomorrow": encode(tomorrow),
+            "todayCount": today.count,
+            "tomorrowCount": tomorrow.count
+        ])
+    }
+
+    private func handleCalendarUpcoming(withinMinutes: Int) async -> (Int, Any) {
+        let events = await CalendarReader.shared.upcomingSoon(withinMinutes: withinMinutes)
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let encoded = events.compactMap { event -> [String: Any]? in
+            guard let data = try? encoder.encode(event),
+                  let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+            return dict
+        }
+        return (200, ["events": encoded, "count": encoded.count, "withinMinutes": withinMinutes])
+    }
+
+    private func handleCalendarEvents(days: Int) async -> (Int, Any) {
+        let events = await CalendarReader.shared.events(days: days)
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let encoded = events.compactMap { event -> [String: Any]? in
+            guard let data = try? encoder.encode(event),
+                  let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+            return dict
+        }
+        return (200, ["events": encoded, "count": encoded.count, "days": days])
+    }
+
+    // MARK: - HealthKit Handler
+
+    private func handleHealthSnapshot() async -> (Int, Any) {
+        // HealthKit on macOS requires either Mac App Store distribution or explicit
+        // Apple entitlement approval. For direct-distribution (DMG) apps, HealthKit
+        // is unavailable — serve cached data from the last iOS export if present.
+        let cachePath = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".openclaw/private/health/latest.json")
+        if FileManager.default.fileExists(atPath: cachePath.path),
+           let data = try? Data(contentsOf: cachePath),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            var result = json
+            result["source"] = "cached_ios_export"
+            return (200, result)
+        }
+
+        // Try native HealthKit (works if running in App Store distribution)
+        if #available(macOS 13.0, *) {
+            do {
+                let snapshot = try await HealthKitReader.shared.latestHealthSnapshot()
+                let encoder = JSONEncoder()
+                encoder.dateEncodingStrategy = .iso8601
+                guard let encoded = try? encoder.encode(snapshot),
+                      var dict = try? JSONSerialization.jsonObject(with: encoded) as? [String: Any] else {
+                    return (500, ["error": "Encoding failed"])
+                }
+                dict["source"] = "healthkit_native"
+                // Cache for other consumers
+                try? encoded.write(to: cachePath)
+                return (200, dict)
+            } catch {
+                // Fall through to not-available response
+            }
+        }
+
+        return (404, [
+            "error": "No health data available",
+            "hint": "HealthKit requires App Store distribution. For direct-distribution, export health data from iPhone via the Health app or use a HealthKit export app, which will write to ~/.openclaw/private/health/latest.json"
+        ])
     }
 }
