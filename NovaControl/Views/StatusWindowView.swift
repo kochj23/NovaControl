@@ -974,11 +974,22 @@ struct HealthTab: View {
     private var cronErrorCount: Int  { data.novaStatus?.crons.filter { $0.status == "error" }.count ?? 0 }
     private var threatCount: Int     { data.threats.count }
 
+    private var hasUNAS: Bool { data.unasStatus != nil }
+    private var hasSynology: Bool { data.synologyStatus != nil }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             overallBanner
             Divider()
             serviceTrafficLights
+            if hasSynology {
+                Divider()
+                synologyResourceSection
+            }
+            if hasUNAS {
+                Divider()
+                unasStorageSection
+            }
             Divider()
             localLLMSection
             Divider()
@@ -1086,6 +1097,170 @@ struct HealthTab: View {
         .padding(.horizontal, 10).padding(.vertical, 6)
         .background(color.opacity(0.08))
         .cornerRadius(7)
+    }
+
+    // MARK: Synology NAS Resources
+
+    private var synologyResourceSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Image(systemName: "server.rack")
+                    .font(.caption).foregroundColor(.orange)
+                Text("Synology RS1221+")
+                    .font(.caption).fontWeight(.semibold).foregroundColor(.secondary)
+                Spacer()
+                if let s = data.synologyStatus {
+                    HStack(spacing: 4) {
+                        if s.problemCount > 0 {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.caption2).foregroundColor(.orange)
+                            Text("\(s.problemCount) issue\(s.problemCount == 1 ? "" : "s")")
+                                .font(.caption2).foregroundColor(.orange)
+                        } else {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.caption2).foregroundColor(.green)
+                            Text(s.volumeStatus)
+                                .font(.caption2).foregroundColor(.green)
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 16).padding(.top, 8)
+
+            if let s = data.synologyStatus {
+                HStack(spacing: 10) {
+                    // CPU gauge
+                    nasMetricCell(
+                        label: "CPU",
+                        value: "\(Int(s.cpuPct))%",
+                        color: s.cpuPct > 80 ? .red : s.cpuPct > 50 ? .orange : .green,
+                        bar: s.cpuPct / 100
+                    )
+                    // RAM gauge
+                    nasMetricCell(
+                        label: "RAM",
+                        value: "\(Int(s.ramPct))%",
+                        color: s.ramPct > 90 ? .red : s.ramPct > 75 ? .orange : .green,
+                        bar: s.ramPct / 100
+                    )
+                    Divider().frame(height: 32)
+                    // Network
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.up").font(.system(size: 8)).foregroundColor(.blue)
+                            Text(s.netTxFormatted).font(.caption2).foregroundColor(.secondary)
+                        }
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.down").font(.system(size: 8)).foregroundColor(.green)
+                            Text(s.netRxFormatted).font(.caption2).foregroundColor(.secondary)
+                        }
+                    }
+                    Divider().frame(height: 32)
+                    // Disk IO
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.up.doc").font(.system(size: 8)).foregroundColor(.purple)
+                            Text(s.diskWriteFormatted).font(.caption2).foregroundColor(.secondary)
+                        }
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.down.doc").font(.system(size: 8)).foregroundColor(.cyan)
+                            Text(s.diskReadFormatted).font(.caption2).foregroundColor(.secondary)
+                        }
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 16).padding(.bottom, 8)
+            }
+        }
+    }
+
+    private func nasMetricCell(label: String, value: String, color: Color, bar: Double) -> some View {
+        VStack(spacing: 3) {
+            Text(label).font(.caption2).foregroundColor(.secondary)
+            Text(value).font(.caption).fontWeight(.semibold).foregroundColor(color)
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 2).fill(Color.gray.opacity(0.2)).frame(height: 4)
+                    RoundedRectangle(cornerRadius: 2).fill(color)
+                        .frame(width: geo.size.width * CGFloat(min(bar, 1.0)), height: 4)
+                }
+            }
+            .frame(height: 4)
+        }
+        .frame(width: 48)
+    }
+
+    // MARK: UNAS Pro 8 Storage
+
+    private var unasStorageSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Image(systemName: "externaldrive.fill")
+                    .font(.caption).foregroundColor(.blue)
+                Text("UNAS Pro 8")
+                    .font(.caption).fontWeight(.semibold).foregroundColor(.secondary)
+                Spacer()
+                if let u = data.unasStatus {
+                    Text(u.isStale ? "stale" : u.storage.status)
+                        .font(.caption2)
+                        .foregroundColor(u.isStale ? .orange : u.isHealthy ? .green : .red)
+                }
+            }
+            .padding(.horizontal, 16).padding(.top, 8)
+
+            if let u = data.unasStatus {
+                let st = u.storage
+                HStack(spacing: 12) {
+                    // Storage usage bar
+                    VStack(alignment: .leading, spacing: 3) {
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 3).fill(Color.gray.opacity(0.2))
+                                    .frame(height: 6)
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(st.isCritical ? Color.red : st.isWarning ? Color.orange : Color.blue)
+                                    .frame(width: geo.size.width * CGFloat(st.usedPct / 100), height: 6)
+                            }
+                        }
+                        .frame(height: 6)
+                        HStack {
+                            Text(st.usedPctFormatted + " used")
+                                .font(.caption2).foregroundColor(.secondary)
+                            Spacer()
+                            Text(st.freeFormatted + " free")
+                                .font(.caption2).foregroundColor(.secondary)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text(st.totalFormatted)
+                            .font(.caption).fontWeight(.semibold)
+                        Text("total")
+                            .font(.caption2).foregroundColor(.secondary)
+                    }
+                }
+                .padding(.horizontal, 16).padding(.bottom, 8)
+
+                // Shares
+                if !u.shares.isEmpty {
+                    ForEach(u.shares) { share in
+                        HStack(spacing: 8) {
+                            Image(systemName: share.isEncrypted ? "lock.fill" : "folder.fill")
+                                .font(.caption2)
+                                .foregroundColor(share.status == "active" ? .blue : .red)
+                            Text(share.name)
+                                .font(.caption2)
+                            Spacer()
+                            Text(share.usedFormatted)
+                                .font(.caption2).foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal, 16).padding(.vertical, 2)
+                    }
+                    .padding(.bottom, 6)
+                }
+            }
+        }
     }
 
     // MARK: Local LLMs

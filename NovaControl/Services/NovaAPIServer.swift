@@ -386,6 +386,22 @@ final class NovaAPIServer {
             return await handlePlexLibrary()
         }
 
+        // ── Synology routes ──────────────────────────────────────────────────
+        if method == "GET" && path == "/api/synology/status" {
+            return await handleSynologyStatus()
+        }
+
+        // ── UNAS Pro 8 routes ────────────────────────────────────────────────
+        if method == "GET" && path == "/api/unas/status" {
+            return await handleUnasStatus()
+        }
+        if method == "GET" && path == "/api/unas/storage" {
+            return await handleUnasStorage()
+        }
+        if method == "GET" && path == "/api/unas/shares" {
+            return await handleUnasShares()
+        }
+
         // ── Calendar routes ──────────────────────────────────────────────────
         if method == "GET" && path == "/api/calendar/today" {
             return await handleCalendarToday()
@@ -1181,6 +1197,85 @@ final class NovaAPIServer {
     private func handlePlexLibrary() async -> (Int, Any) {
         let summary = await PlexReader.shared.librarySummary()
         return (200, summary)
+    }
+
+    // MARK: - Synology Handler
+
+    private func handleSynologyStatus() async -> (Int, Any) {
+        guard let s = await SynologyReader.shared.fetchStatus() else {
+            return (503, ["error": "Synology status unavailable — monitor not running"])
+        }
+        return (200, [
+            "model":           s.model,
+            "firmware":        s.firmware,
+            "cpu_pct":         s.cpuPct,
+            "ram_pct":         s.ramPct,
+            "net_tx_bps":      s.netTxBps,
+            "net_rx_bps":      s.netRxBps,
+            "disk_read_bps":   s.diskReadBps,
+            "disk_write_bps":  s.diskWriteBps,
+            "volume_status":   s.volumeStatus,
+            "problem_count":   s.problemCount,
+            "healthy":         s.isHealthy,
+            "last_check":      s.lastCheck,
+        ])
+    }
+
+    // MARK: - UNAS Pro 8 Handlers
+
+    private func handleUnasStatus() async -> (Int, Any) {
+        guard let s = await UNASReader.shared.fetchStatus() else {
+            return (503, ["error": "UNAS status unavailable — monitor not running"])
+        }
+        return (200, [
+            "model":           s.device.model,
+            "name":            s.device.name,
+            "state":           s.device.state,
+            "healthy":         s.isHealthy,
+            "cloud_connected": s.device.cloudConnected,
+            "has_internet":    s.device.hasInternet,
+            "storage_status":  s.storage.status,
+            "used_pct":        s.storage.usedPct,
+            "free_tb":         s.storage.freeTb,
+            "total_tb":        s.storage.totalTb,
+            "stale":           s.isStale,
+            "last_updated":    s.lastUpdated.timeIntervalSince1970,
+        ])
+    }
+
+    private func handleUnasStorage() async -> (Int, Any) {
+        guard let s = await UNASReader.shared.fetchStatus() else {
+            return (503, ["error": "UNAS status unavailable"])
+        }
+        let st = s.storage
+        return (200, [
+            "status":        st.status,
+            "total_bytes":   st.totalBytes,
+            "used_bytes":    st.usedBytes,
+            "free_bytes":    st.freeBytes,
+            "used_pct":      st.usedPct,
+            "total_tb":      st.totalTb,
+            "free_tb":       st.freeTb,
+            "needs_more_disk": st.needsMoreDisk,
+            "is_warning":    st.isWarning,
+            "is_critical":   st.isCritical,
+        ])
+    }
+
+    private func handleUnasShares() async -> (Int, Any) {
+        guard let s = await UNASReader.shared.fetchStatus() else {
+            return (503, ["error": "UNAS status unavailable"])
+        }
+        let shares = s.shares.map { share -> [String: Any] in [
+            "id":         share.id,
+            "name":       share.name,
+            "status":     share.status,
+            "used_bytes": share.usedBytes,
+            "used_tb":    share.usedTb,
+            "encrypted":  share.isEncrypted,
+            "quota":      share.quota,
+        ]}
+        return (200, ["shares": shares, "count": shares.count])
     }
 
     // MARK: - Calendar Handlers

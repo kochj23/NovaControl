@@ -50,6 +50,12 @@ class DataManager: ObservableObject {
     @Published var bbServiceStates: [BBServiceState] = []
     @Published var bbAlive: Bool = false
 
+    // UNAS Pro 8
+    @Published var unasStatus: UNASStatus?
+
+    // Synology NAS
+    @Published var synologyStatus: SynologyStatus?
+
     private var refreshTimer: Timer?
     private var bbRefreshTimer: Timer?
 
@@ -107,11 +113,13 @@ class DataManager: ObservableObject {
             async let llms  = NovaReader.shared.fetchLocalLLMs()
             async let subs  = NovaReader.shared.fetchSubsystems()
             async let agents = NovaReader.shared.fetchAgents()
+            async let unas  = UNASReader.shared.fetchStatus()
+            async let syno  = SynologyReader.shared.fetchStatus()
 
             let (meetings, actions, persons, goals, devs, threats, jobs, history,
                  sysStats, processes, articles, favorites, novaStatus, aiServices, mlxInfo, localLLMs,
-                 subsystems, agentList) =
-                await (m, a, p, g, d, t, j, h, stats, procs, news, favs, nova, ai, mlx, llms, subs, agents)
+                 subsystems, agentList, unasData, synoData) =
+                await (m, a, p, g, d, t, j, h, stats, procs, news, favs, nova, ai, mlx, llms, subs, agents, unas, syno)
 
             await MainActor.run {
                 self.meetings      = meetings
@@ -132,6 +140,8 @@ class DataManager: ObservableObject {
                 self.localLLMs     = localLLMs
                 self.novaSubsystems = subsystems
                 self.novaAgents    = agentList
+                self.unasStatus    = unasData
+                self.synologyStatus = synoData
                 self.lastRefresh   = Date()
                 self.updateServiceStatuses()
             }
@@ -179,6 +189,29 @@ class DataManager: ObservableObject {
                 summary: "\(breakingNews.count) unread stories"
             ),
         ]
+
+        // Synology NAS service card
+        if let syno = synologyStatus {
+            statuses.append(ServiceInfo(
+                id: "synology",
+                name: "Synology RS1221+",
+                oldPort: 0,
+                status: syno.isHealthy ? .online : (syno.problemCount > 0 ? .degraded : .online),
+                summary: "CPU \(Int(syno.cpuPct))% · RAM \(Int(syno.ramPct))% · \(syno.volumeStatus)"
+            ))
+        }
+
+        // UNAS Pro 8 service card
+        if let unas = unasStatus {
+            let st = unas.storage
+            statuses.append(ServiceInfo(
+                id: "unas",
+                name: "UNAS Pro 8",
+                oldPort: 0,
+                status: unas.isHealthy ? .online : .degraded,
+                summary: "\(st.usedPctFormatted) used · \(st.freeFormatted) free of \(st.totalFormatted)"
+            ))
+        }
 
         // Nova gateway service card
         if let nova = novaStatus {

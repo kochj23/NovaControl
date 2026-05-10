@@ -28,6 +28,8 @@
 		B89C4467B809069A5C0C2832 /* NMAPReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBD791C1FD27ECC9AFA3185F /* NMAPReader.swift */; };
 		BE1727BD90C82D8886E5973F /* BigBrotherReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A832ED10546B7242DD685A3 /* BigBrotherReader.swift */; };
 		BE354CBA953C8E0FFFB94DA9 /* PlexReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04C3BE6910ABCA91E72BF2FB /* PlexReader.swift */; };
+		CF2A7B1E3D9F4A5C8E1B0D2F /* UNASReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E1F2 /* UNASReader.swift */; };
+		D3E4F5A6B7C8D9E0F1A2B3C4 /* SynologyReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5F6A7B8C9D0E1F2A3B4C5D6 /* SynologyReader.swift */; };
 		D70E7C85821F85491FD6B54C /* WorkflowEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E9F0F3EC7774CB1146964F0 /* WorkflowEngine.swift */; };
 		E3C88C45BA35DA4CF0B6502B /* StatusWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 939FBBCC25F92AA1ECFE6535 /* StatusWindowView.swift */; };
 /* End PBXBuildFile section */
@@ -44,6 +46,8 @@
 
 /* Begin PBXFileReference section */
 		04C3BE6910ABCA91E72BF2FB /* PlexReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlexReader.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6A7B8C9D0E1F2 /* UNASReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UNASReader.swift; sourceTree = "<group>"; };
+		E5F6A7B8C9D0E1F2A3B4C5D6 /* SynologyReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynologyReader.swift; sourceTree = "<group>"; };
 		0E5C4C76841118DC9CB8E389 /* DataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataManager.swift; sourceTree = "<group>"; };
 		1735DFAB6A5BE43416AFDDC3 /* NovaControlTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NovaControlTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2BBE9E16D3E46919A4AFBB31 /* WorkflowEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowEngineTests.swift; sourceTree = "<group>"; };
@@ -157,6 +161,8 @@
 				04C3BE6910ABCA91E72BF2FB /* PlexReader.swift */,
 				D5C3EE0E08A946C0527A3F81 /* RsyncReader.swift */,
 				CE6CCD454AA2773FB883E74B /* SystemStatsReader.swift */,
+				A1B2C3D4E5F6A7B8C9D0E1F2 /* UNASReader.swift */,
+				E5F6A7B8C9D0E1F2A3B4C5D6 /* SynologyReader.swift */,
 			);
 			path = Readers;
 			sourceTree = "<group>";
@@ -281,6 +287,8 @@
 				76C84F6941929AB8A7474734 /* OneOnOneReader.swift in Sources */,
 				BE354CBA953C8E0FFFB94DA9 /* PlexReader.swift in Sources */,
 				69557E2DD01CE9312C3FB00A /* RsyncReader.swift in Sources */,
+				CF2A7B1E3D9F4A5C8E1B0D2F /* UNASReader.swift in Sources */,
+				D3E4F5A6B7C8D9E0F1A2B3C4 /* SynologyReader.swift in Sources */,
 				1B8D1E48A9573F18932944B6 /* ServiceModels.swift in Sources */,
 				E3C88C45BA35DA4CF0B6502B /* StatusWindowView.swift in Sources */,
 				096E0DDECCAD4EB7BFAB5593 /* SystemStatsReader.swift in Sources */,
@@ -382,7 +390,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = QRRCB8HB3W;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
@@ -392,7 +400,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.3.0;
+				MARKETING_VERSION = 1.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = net.digitalnoise.NovaControl;
 				PRODUCT_NAME = NovaControl;
 				SDKROOT = macosx;
@@ -471,7 +479,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = QRRCB8HB3W;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
@@ -481,7 +489,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.3.0;
+				MARKETING_VERSION = 1.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = net.digitalnoise.NovaControl;
 				PRODUCT_NAME = NovaControl;
 				SDKROOT = macosx;

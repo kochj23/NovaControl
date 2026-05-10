@@ -5,7 +5,7 @@
 ![Swift](https://img.shields.io/badge/Swift-5.9-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![API Port](https://img.shields.io/badge/API-port%2037400-purple)
-![Version](https://img.shields.io/badge/version-1.3.0-brightgreen)
+![Version](https://img.shields.io/badge/version-1.4.0-brightgreen)
 
 A macOS menu bar application that consolidates the HTTP APIs of multiple local
 applications into a single unified endpoint. NovaControl reads each app's data
@@ -13,9 +13,12 @@ files directly, exposes everything on `localhost:37400`, and provides a SwiftUI
 dashboard with health monitoring, workflow automation, and Prometheus-compatible
 metrics -- all without requiring the source applications to be running.
 
-**v1.3.0 adds Plex media server status, iCal/ICS calendar reading, and a
-HealthKit data snapshot endpoint.** All Nova scripts that previously called
-port 37421 (OneOnOne) have been migrated to port 37400.
+**v1.4.0 adds UniFi UNAS Pro 8 storage monitoring and Synology RS1221+ resource
+monitoring (CPU, RAM, network throughput, disk I/O) with live dashboard panels in
+the Health tab.** Both NAS devices show busyness metrics alongside storage health,
+wired into Big Brother oversight and the Nova scheduler.
+
+**v1.3.0** added Plex, iCal/ICS calendar, and HealthKit snapshot endpoint.
 
 ---
 
@@ -41,9 +44,11 @@ graph TB
         DM --> HKR[HomeKitReader]
         DM --> AIR[AIServiceReader]
         DM --> BBR[BigBrotherReader<br/>15s refresh]
-        DM --> PLR[PlexReader ★ new]
-        DM --> CAL[CalendarReader ★ new]
-        DM --> HLR[HealthKitReader ★ new]
+        DM --> PLR[PlexReader]
+        DM --> CAL[CalendarReader]
+        DM --> HLR[HealthKitReader]
+        DM --> UNR[UNASReader ★ new]
+        DM --> SYR[SynologyReader ★ new]
     end
 
     subgraph Data Sources
@@ -61,6 +66,8 @@ graph TB
         PLR -->|HTTP + token| PLEX[Synology Plex :32400]
         CAL -->|ICS URL from Keychain| ICAL[iCal / CalDAV Feed]
         HLR -->|JSON fallback| HDF[~/.openclaw/private/health/latest.json]
+        UNR -->|JSON file| UNF[~/.openclaw/workspace/state/nova_unas_status.json]
+        SYR -->|JSON file| SNF[~/.openclaw/workspace/state/nova_synology_state.json]
     end
 
     subgraph API Routes
@@ -71,6 +78,8 @@ graph TB
         API --> R5[/api/nova/* /api/ai/*]
         API --> R6[/api/health /metrics /api/docs]
         API --> R7[/api/workflows /api/topology /api/graph]
+        API --> R13[/api/unas/* ★ new]
+        API --> R14[/api/synology/* ★ new]
         API --> R8[/api/homekit/*]
         API --> R9[/api/bigbrother/* → proxy :37461]
         API --> R10[/api/plex/* ★ new]
@@ -112,6 +121,8 @@ metrics from kernel APIs. The data path for each service:
 | Plex | HTTP `192.168.1.10:32400` — token loaded from macOS Keychain | on-demand |
 | Calendar | ICS URL loaded from macOS Keychain → parsed locally | on-demand |
 | HealthKit | `~/.openclaw/private/health/latest.json` (iOS export fallback) | on-demand |
+| UNAS Pro 8 | `~/.openclaw/workspace/state/nova_unas_status.json` (written by `nova_unas_monitor.py` every 5 min) | 60s |
+| Synology RS1221+ | `~/.openclaw/workspace/state/nova_synology_state.json` (written by `nova_synology_monitor.py` every 30 min) | 60s |
 
 ---
 
@@ -132,6 +143,8 @@ API access to their data.
 | Plex Media Server | external | `/api/plex/*` |
 | iCal / CalDAV | external | `/api/calendar/*` |
 | HealthKit / iOS export | local file | `/api/health/snapshot` |
+| UniFi UNAS Pro 8 | local JSON file | `/api/unas/*` |
+| Synology RS1221+ | local JSON file | `/api/synology/*` |
 
 Additional routes exist for Nova/OpenClaw AI services (`/api/nova/*`,
 `/api/ai/*`, `/api/mlxcode/*`), HomeKit scene execution, AI-powered
@@ -425,6 +438,28 @@ curl http://127.0.0.1:37400/api/health/snapshot
 Response includes a `source` field indicating `"cached_ios_export"` or
 `"healthkit_native"`. If no data is available, the response is HTTP 404 with
 a hint on how to export data from the Health app.
+
+### UNAS Pro 8
+
+`UNASReader` reads `~/.openclaw/workspace/state/nova_unas_status.json`, written
+by `nova_unas_monitor.py` every 5 minutes via the Nova scheduler. Auth key stored
+in macOS Keychain (`service=nova`, `account=nova`).
+
+```bash
+curl http://127.0.0.1:37400/api/unas/status   # device info, health, storage summary
+curl http://127.0.0.1:37400/api/unas/storage  # storage bytes, used %, free TB, warning flags
+curl http://127.0.0.1:37400/api/unas/shares   # shared drive list with per-share usage
+```
+
+### Synology RS1221+
+
+`SynologyReader` reads `~/.openclaw/workspace/state/nova_synology_state.json`,
+written by `nova_synology_monitor.py` every 30 minutes. Exposes CPU %, RAM %,
+network throughput (TX/RX bytes/sec), and disk I/O (read/write bytes/sec)
+collected from `SYNO.Core.System.Utilization`.
+
+The Health tab dashboard shows live CPU/RAM gauges, network throughput arrows
+(↑ TX / ↓ RX), and disk I/O indicators for both NAS devices.
 
 ---
 
