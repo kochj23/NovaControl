@@ -47,8 +47,8 @@ graph TB
         DM --> PLR[PlexReader]
         DM --> CAL[CalendarReader]
         DM --> HLR[HealthKitReader]
-        DM --> UNR[UNASReader ★ new]
-        DM --> SYR[SynologyReader ★ new]
+        DM --> UNR[UNASReader]
+        DM --> SYR[SynologyReader]
     end
 
     subgraph Data Sources
