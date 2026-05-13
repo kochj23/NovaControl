@@ -57,7 +57,7 @@ graph TB
         RR -->|JSON files| RSD[~/Library/App Support/RsyncGUI/]
         SSR -->|Mach/IOKit| SYS[Kernel APIs]
         NSR -->|JSON files| NSD[~/Library/App Support/NewsSummary/]
-        NVR -->|HTTP + CLI| GW[OpenClaw :18789]
+        NVR -->|HTTP| GW[Nova Gateway v2 :18792]
         NVR -->|HTTP| MEM[Memory Server :18790]
         NVR -->|HTTP| OLL[Ollama :11434]
         MLR -->|HTTP proxy| MLXC[MLXCode :37422]
@@ -146,13 +146,31 @@ API access to their data.
 | UniFi UNAS Pro 8 | local JSON file | `/api/unas/*` |
 | Synology RS1221+ | local JSON file | `/api/synology/*` |
 
-Additional routes exist for Nova/OpenClaw AI services (`/api/nova/*`,
-`/api/ai/*`, `/api/mlxcode/*`), HomeKit scene execution, AI-powered
-summarization, health monitoring, workflow automation, topology mapping,
-content graphs, and Prometheus metrics export.
+Additional routes exist for Nova AI services (`/api/nova/*`, `/api/ai/*`,
+`/api/mlxcode/*`), HomeKit scene execution, AI-powered summarization, health
+monitoring, workflow automation, topology mapping, content graphs, and
+Prometheus metrics export.
 
 All Nova scripts that previously called OneOnOne on port 37421 have been
 migrated to port 37400.
+
+### Nova Gateway v2 (May 2026)
+
+In May 2026, the OpenClaw node.js binary was replaced with a pure Python
+gateway (`nova_gateway_v2.py`). NovaControl's `/api/nova/*` and `/api/ai/*`
+routes now point to Nova Gateway v2 on port `18792` instead of OpenClaw on
+port `18789`.
+
+```mermaid
+graph LR
+    NC["NovaControl :37400\n/api/nova/*\n/api/ai/*"] --> GW2["Nova Gateway v2\n127.0.0.1:18792\nPure Python asyncio"]
+    GW2 --> Ollama["Ollama :11434\nqwen3:30b-a3b"]
+    GW2 --> PG["nova_ops PostgreSQL\ngateway_sessions\nagent_docs"]
+```
+
+Nova scripts use `nova_config.NOVACONTROL = "http://127.0.0.1:37400"` and
+never hardcode individual ports. NovaControl is the stable contract; the
+backing services can be replaced without changing any script.
 
 ---
 
