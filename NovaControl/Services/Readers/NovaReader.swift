@@ -1,15 +1,17 @@
-// NovaControl — Nova / OpenClaw Reader
+// NovaControl — Nova Gateway v2 Reader
 // Written by Jordan Koch
-// Probes OpenClaw gateway, memory server, and cron status
+// Probes Nova Gateway v2 (pure Python asyncio), memory server, and scheduler status
+// Note: OpenClaw (node.js, port 18789) was replaced by Nova Gateway v2 (port 18792) in May 2026
 
 import Foundation
 
 actor NovaReader {
     static let shared = NovaReader()
 
-    private let openclaw = "/opt/homebrew/bin/openclaw"
-    private let gatewayURL = URL(string: "http://127.0.0.1:18789/health")!
-    private let memoryURL  = URL(string: "http://127.0.0.1:18790/health")!
+    // Nova Gateway v2 — pure Python asyncio replacement for OpenClaw
+    private let gatewayURL = URL(string: "http://127.0.0.1:18792/health")!
+    // Memory server binds to LAN IP
+    private let memoryURL  = URL(string: "http://192.168.1.6:18790/health")!
 
     func fetchStatus() async -> NovaStatus {
         async let gatewayResult = probeGateway()
@@ -54,40 +56,55 @@ actor NovaReader {
         return (true, count)
     }
 
-    // MARK: - Session info via openclaw status
+    // MARK: - Session info via Gateway v2 health endpoint
 
     private func fetchSessionInfo() async -> (model: String, count: Int) {
-        let output = runCommand(openclaw, args: ["status"])
-        // Extract model from "default <model>" line and active session count
-        var model = "unknown"
-        var sessionCount = 0
-
-        for line in output.components(separatedBy: "\n") {
-            // Match "sessions N active · default <model>"
-            if line.contains("active") && line.contains("default") {
-                let parts = line.components(separatedBy: "·")
-                if let sessionPart = parts.first {
-                    let tokens = sessionPart.trimmingCharacters(in: .whitespaces)
-                        .components(separatedBy: " ")
-                    if let n = tokens.first.flatMap({ Int($0) }) {
-                        sessionCount = n
-                    }
-                }
-                if let modelPart = parts.last(where: { $0.contains("default") }) {
-                    let m = modelPart.replacingOccurrences(of: "default", with: "")
-                        .trimmingCharacters(in: .whitespaces)
-                    if !m.isEmpty { model = m }
-                }
-            }
+        // Query Gateway v2 health for session count and model info
+        guard let (data, response) = try? await URLSession.shared.data(from: gatewayURL),
+              let http = response as? HTTPURLResponse, http.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return ("qwen3:30b-a3b", 0)
         }
-        return (model, sessionCount)
+        let sessions = json["sessions"] as? Int ?? 0
+        let version  = json["version"] as? String ?? "2.0.0"
+        return ("qwen3:30b-a3b (gw \(version))", sessions)
     }
 
-    // MARK: - Cron list
+    // MARK: - Scheduler task list (replaces OpenClaw cron list)
 
     func fetchCrons() async -> [NovaCronJob] {
-        let output = runCommand(openclaw, args: ["cron", "list"])
-        return parseCronOutput(output)
+        // Query nova_scheduler HTTP API instead of deprecated openclaw cron list
+        guard let url = URL(string: "http://192.168.1.6:37460/tasks"),
+              let (data, response) = try? await URLSession.shared.data(from: url),
+              let http = response as? HTTPURLResponse, http.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return []
+        }
+        var jobs: [NovaCronJob] = []
+        for (taskId, taskData) in json {
+            guard let t = taskData as? [String: Any] else { continue }
+            let schedule  = t["schedule"] as? String ?? ""
+            let lastRun   = t["last_run"] as? Double ?? 0
+            let nextRun   = t["next_run"] as? Double ?? 0
+            let failures  = t["consecutive_failures"] as? Int ?? 0
+            let exitCode  = t["last_exit_code"] as? Int ?? 0
+            let enabled   = t["enabled"] as? Bool ?? true
+            guard enabled else { continue }
+            let status    = failures > 0 ? "error" : (exitCode == 0 ? "ok" : "error")
+            let lastStr   = lastRun > 0 ? formatEpoch(lastRun) : "never"
+            let nextStr   = nextRun > 0 ? formatEpoch(nextRun) : "—"
+            jobs.append(NovaCronJob(id: taskId, name: taskId, schedule: schedule,
+                                    nextRun: nextStr, lastRun: lastStr,
+                                    status: status, target: "scheduler"))
+        }
+        return jobs.sorted { $0.name < $1.name }
+    }
+
+    private func formatEpoch(_ ts: Double) -> String {
+        let date = Date(timeIntervalSince1970: ts)
+        let fmt = DateFormatter()
+        fmt.dateFormat = "MM-dd HH:mm"
+        return fmt.string(from: date)
     }
 
     private func parseCronOutput(_ output: String) -> [NovaCronJob] {
@@ -132,8 +149,8 @@ actor NovaReader {
     // MARK: - Multi-Agent status
 
     func fetchAgents() async -> [AgentInfo] {
-        // Query the gateway's agent status endpoint
-        guard let url = URL(string: "http://127.0.0.1:18789/api/agents") else { return [] }
+        // Query Gateway v2 health — agents are embedded in the Python gateway
+        guard let url = URL(string: "http://127.0.0.1:18792/health") else { return [] }
         var request = URLRequest(url: url)
         request.timeoutInterval = 3.0
 
@@ -195,62 +212,44 @@ actor NovaReader {
         )
     }
 
-    /// Fallback: probe the openclaw CLI for agent info if HTTP endpoint is unavailable
+    /// Fallback: return static agent info based on known Gateway v2 configuration
     private func fallbackAgents() -> [AgentInfo] {
-        let output = runCommand(openclaw, args: ["agent", "list"])
-        guard !output.isEmpty else { return [] }
-
-        var agents: [AgentInfo] = []
-        let lines = output.components(separatedBy: "\n")
-
-        for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            guard !trimmed.isEmpty else { continue }
-
-            // Parse lines like: "chat  running  ollama/qwen3-next:80b  slack,discord"
-            let cols = trimmed.components(separatedBy: "  ")
-                .map { $0.trimmingCharacters(in: .whitespaces) }
-                .filter { !$0.isEmpty }
-
-            guard cols.count >= 2 else { continue }
-            let name = cols[0]
-            let status = cols.count > 1 ? cols[1] : "unknown"
-            let model = cols.count > 2 ? cols[2] : "unknown"
-            let channels = cols.count > 3 ? cols[3].components(separatedBy: ",") : []
-
-            agents.append(AgentInfo(
-                id: name,
-                name: name,
-                status: status,
-                model: model,
-                workspaceSize: 0,
-                channels: channels,
-                tasksCompleted: 0,
-                uptimeSeconds: 0,
-                lastError: nil
-            ))
-        }
-
-        return agents
+        // Nova Gateway v2 agents — defined in nova_gateway_v2.py
+        return [
+            AgentInfo(id: "chat",     name: "chat",     status: "running",
+                      model: "qwen3:30b-a3b",         workspaceSize: 8192,
+                      channels: ["slack","discord","signal"], tasksCompleted: 0,
+                      uptimeSeconds: 0, lastError: nil),
+            AgentInfo(id: "research", name: "research", status: "running",
+                      model: "openrouter/qwen3-235b",  workspaceSize: 65536,
+                      channels: ["slack","discord","signal"], tasksCompleted: 0,
+                      uptimeSeconds: 0, lastError: nil),
+            AgentInfo(id: "home",     name: "home",     status: "running",
+                      model: "qwen3:30b-a3b",          workspaceSize: 16384,
+                      channels: ["slack","discord","signal"], tasksCompleted: 0,
+                      uptimeSeconds: 0, lastError: nil),
+        ]
     }
 
     // MARK: - AI services health check
 
     func fetchAIServices() async -> [AIService] {
-        let services: [(id: String, name: String, port: Int, path: String)] = [
-            ("openclaw",    "OpenClaw Gateway",     18789, "/health"),
-            ("memory",      "Nova Memory Server",   18790, "/health"),
-            ("memory_srch", "Memory /search",       18790, "/search?q=test&n=1"),
-            ("ollama",      "Ollama",               11434, "/api/tags"),
-            ("novanextgen", "Nova-NextGen",         34750, "/api/ai/backends"),
-            ("swarmui",     "SwarmUI",               7801, "/API/Trex"),
-            ("comfyui",     "ComfyUI",               7821, "/system_stats"),
+        // Gateway v2 runs on 127.0.0.1:18792 (Python asyncio, replaced OpenClaw :18789)
+        // Memory server and MLX server bind to LAN IP (192.168.1.6)
+        let services: [(id: String, name: String, host: String, port: Int, path: String)] = [
+            ("gateway_v2",  "Nova Gateway v2",      "127.0.0.1",   18792, "/health"),
+            ("memory",      "Nova Memory Server",   "192.168.1.6", 18790, "/health"),
+            ("memory_srch", "Memory /search",       "192.168.1.6", 18790, "/search?q=test&n=1"),
+            ("ollama",      "Ollama",               "127.0.0.1",   11434, "/api/tags"),
+            ("mlx",         "MLX Server",           "192.168.1.6",  5050, "/v1/models"),
+            ("swarmui",     "SwarmUI",              "127.0.0.1",    7801, "/API/Trex"),
+            ("bigbrother",  "Big Brother",          "192.168.1.6", 37461, "/bb/status"),
         ]
 
         return await withTaskGroup(of: AIService.self) { group in
             for svc in services {
                 group.addTask {
-                    guard let url = URL(string: "http://127.0.0.1:\(svc.port)\(svc.path)") else {
+                    guard let url = URL(string: "http://\(svc.host):\(svc.port)\(svc.path)") else {
                         return AIService(id: svc.id, name: svc.name, port: svc.port,
                                         isOnline: false, detail: "invalid url")
                     }
@@ -262,6 +261,13 @@ actor NovaReader {
                         let online = (200...299).contains(statusCode)
                         var detail = online ? "online" : "http \(statusCode)"
                         // Enrich detail for known services
+                        if svc.id == "gateway_v2", online,
+                           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                            let version  = json["version"] as? String ?? "2.0.0"
+                            let sessions = json["sessions"] as? Int ?? 0
+                            let uptime   = json["uptime_s"] as? Int ?? 0
+                            detail = "v\(version) · \(sessions) sessions · \(uptime)s uptime"
+                        }
                         if svc.id == "memory", online,
                            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                             let count = json["count"] as? Int ?? 0
@@ -271,16 +277,20 @@ actor NovaReader {
                         if svc.id == "memory_srch" {
                             detail = online ? "available" : "unavailable"
                         }
-                        if svc.id == "novanextgen", online,
-                           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                           let backends = json["backends"] as? [[String: Any]] {
-                            let activeCount = backends.filter { $0["available"] as? Bool == true }.count
-                            detail = "\(activeCount)/\(backends.count) backends active"
-                        }
                         if svc.id == "ollama", online,
                            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                            let models = json["models"] as? [[String: Any]] {
                             detail = "\(models.count) models"
+                        }
+                        if svc.id == "mlx", online,
+                           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                           let models = json["data"] as? [[String: Any]] {
+                            detail = "\(models.count) model(s)"
+                        }
+                        if svc.id == "bigbrother", online,
+                           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                            let down = (json["services_down"] as? [String] ?? []).count
+                            detail = down == 0 ? "all systems healthy" : "\(down) service(s) down"
                         }
                         return AIService(id: svc.id, name: svc.name, port: svc.port,
                                         isOnline: online, detail: detail)
@@ -464,14 +474,17 @@ actor NovaReader {
     }
 
     func fetchSubsystems() async -> [NovaSubsystem] {
+        // Note: services bind to 192.168.1.6 (LAN) except Ollama/Gateway v2 (127.0.0.1)
         let checks: [(id: String, name: String, port: Int)] = [
-            ("postgresql", "PostgreSQL", 5432),
-            ("redis", "Redis", 6379),
-            ("ollama", "Ollama", 11434),
-            ("gateway", "OpenClaw Gateway", 18789),
-            ("memory", "Memory Server", 18790),
-            ("openwebui", "OpenWebUI", 3000),
-            ("tinychat", "TinyChat", 8000),
+            ("postgresql",  "PostgreSQL",       5432),
+            ("redis",       "Redis",            6379),
+            ("ollama",      "Ollama",           11434),
+            ("gateway_v2",  "Nova Gateway v2",  18792),
+            ("memory",      "Memory Server",    18790),
+            ("scheduler",   "Scheduler",        37460),
+            ("bigbrother",  "Big Brother",      37461),
+            ("openwebui",   "OpenWebUI",        3000),
+            ("tinychat",    "TinyChat",         8000),
         ]
 
         var results: [NovaSubsystem] = []
@@ -488,19 +501,42 @@ actor NovaReader {
                        let models = json["models"] as? [[String: Any]] {
                         detail = "\(models.count) models"
                     }
+                case "gateway_v2":
+                    if let url = URL(string: "http://127.0.0.1:18792/health"),
+                       let (data, _) = try? await URLSession.shared.data(from: url),
+                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                        let v = json["version"] as? String ?? "2.0.0"
+                        let s = json["sessions"] as? Int ?? 0
+                        detail = "v\(v) · \(s) sessions"
+                    }
                 case "memory":
-                    if let url = URL(string: "http://127.0.0.1:18790/health"),
+                    if let url = URL(string: "http://192.168.1.6:18790/health"),
                        let (data, _) = try? await URLSession.shared.data(from: url),
                        let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                        let count = json["count"] as? Int {
                         detail = "\(count) memories"
                     }
+                case "scheduler":
+                    if let url = URL(string: "http://192.168.1.6:37460/status"),
+                       let (data, _) = try? await URLSession.shared.data(from: url),
+                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                        let total = json["tasks_total"] as? Int ?? 0
+                        let runs  = json["total_runs"] as? Int ?? 0
+                        detail = "\(total) tasks · \(runs) runs"
+                    }
+                case "bigbrother":
+                    if let url = URL(string: "http://192.168.1.6:37461/bb/status"),
+                       let (data, _) = try? await URLSession.shared.data(from: url),
+                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                        let down = (json["services_down"] as? [String] ?? []).count
+                        detail = down == 0 ? "all clear" : "\(down) down"
+                    }
                 case "redis":
-                    let out = runCommand("/opt/homebrew/bin/redis-cli", args: ["ping"])
+                    let out = runCommand("/opt/homebrew/bin/redis-cli", args: ["-h", "192.168.1.6", "ping"])
                     detail = out.trimmingCharacters(in: .whitespacesAndNewlines) == "PONG" ? "PONG" : "no response"
                 case "postgresql":
                     let out = runCommand("/opt/homebrew/opt/postgresql@17/bin/psql",
-                                         args: ["-h", "127.0.0.1", "-d", "nova_memories", "-t", "-c", "SELECT 1"])
+                                         args: ["-h", "192.168.1.6", "-d", "nova_memories", "-t", "-c", "SELECT 1"])
                     detail = out.contains("1") ? "nova_memories OK" : "query failed"
                 default:
                     break
@@ -514,6 +550,7 @@ actor NovaReader {
     }
 
     private func isPortListening(_ port: Int) -> Bool {
+        // Check both loopback and LAN IP since services bind to different addresses
         let output = runCommand("/usr/sbin/lsof", args: ["-ti", "tcp:\(port)", "-sTCP:LISTEN"])
         return !output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }

@@ -449,9 +449,9 @@ final class NovaAPIServer {
         let statuses = await dm.serviceStatuses
         let lastRefresh = await dm.lastRefresh
 
-        // Probe Nova memory gateway
+        // Probe Nova Gateway v2 (replaced OpenClaw in May 2026; memory server on LAN IP)
         var novaMemoryStatus = "unreachable"
-        if let url = URL(string: "http://127.0.0.1:18790/health") {
+        if let url = URL(string: "http://192.168.1.6:18790/health") {
             do {
                 let (_, response) = try await URLSession.shared.data(from: url)
                 if let http = response as? HTTPURLResponse, http.statusCode == 200 {
@@ -582,7 +582,7 @@ final class NovaAPIServer {
     }
 
     private func handleNovaMemory() async -> (Int, Any) {
-        guard let url = URL(string: "http://127.0.0.1:18790/stats") else {
+        guard let url = URL(string: "http://192.168.1.6:18790/stats") else {
             return (503, ["error": "memory server unreachable"])
         }
         var request = URLRequest(url: url)
@@ -591,7 +591,7 @@ final class NovaAPIServer {
               let http = response as? HTTPURLResponse, http.statusCode == 200,
               let json = try? JSONSerialization.jsonObject(with: data) else {
             // Fall back to health endpoint
-            if let url2 = URL(string: "http://127.0.0.1:18790/health"),
+            if let url2 = URL(string: "http://192.168.1.6:18790/health"),
                let (data2, _) = try? await URLSession.shared.data(from: url2),
                let json2 = try? JSONSerialization.jsonObject(with: data2) {
                 return (200, json2)

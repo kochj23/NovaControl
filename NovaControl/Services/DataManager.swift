@@ -213,15 +213,15 @@ class DataManager: ObservableObject {
             ))
         }
 
-        // Nova gateway service card
+        // Nova Gateway v2 service card (replaced OpenClaw :18789 in May 2026)
         if let nova = novaStatus {
             statuses.append(ServiceInfo(
                 id: "nova",
-                name: "Nova",
-                oldPort: 18789,
+                name: "Nova Gateway v2",
+                oldPort: 18792,
                 status: nova.gatewayOnline ? .online : .offline,
                 summary: nova.gatewayOnline
-                    ? "\(nova.memoriesCount) memories · \(nova.crons.filter { $0.status == "error" }.count) cron errors"
+                    ? "\(nova.memoriesCount) memories · \(nova.crons.filter { $0.status == "error" }.count) task errors"
                     : "gateway offline"
             ))
         }
