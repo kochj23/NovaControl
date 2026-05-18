@@ -110,7 +110,7 @@ metrics from kernel APIs. The data path for each service:
 | RsyncGUI | `~/Library/Application Support/RsyncGUI/jobs.json` + `History/history.json` | 60s |
 | System Stats | Mach `host_statistics` / `vm_statistics64` / IOKit disk I/O / `sysctl kern.boottime` | 60s |
 | News Summary | `~/Library/Application Support/NewsSummary/*.json` | 60s |
-| Nova Gateway | HTTP probe `127.0.0.1:18789/health` | 60s |
+| Nova Gateway | HTTP probe `127.0.0.1:18792/health` | 60s |
 | Nova Memory | HTTP probe `127.0.0.1:18790/health` + `/stats` | 60s |
 | Ollama | HTTP `127.0.0.1:11434/api/tags` + `/api/ps` + `/api/generate` | 60s / on-demand |
 | MLX Server | HTTP `127.0.0.1:5050/v1/models` | 60s |
@@ -158,13 +158,25 @@ migrated to port 37400.
 
 In May 2026, the OpenClaw node.js binary was replaced with a pure Python
 gateway (`nova_gateway_v2.py`). NovaControl's `/api/nova/*` and `/api/ai/*`
-routes now point to Nova Gateway v2 on port `18792` instead of OpenClaw on
-port `18789`.
+routes now point to Nova Gateway v2 on port `18792` instead of the legacy
+gateway on port `18789`.
+
+**Host hardware:** Mac Studio M4 Ultra, 512 GB unified memory.
+
+**Nova infrastructure at a glance:**
+
+| Component | Detail |
+|-----------|--------|
+| Primary model | `openrouter/qwen/qwen3-235b-a22b-2507` (chat / research) |
+| Local models | `qwen3-next:80b` (Ollama), `qwen3-coder:30b`, `deepseek-r1:8b` (reasoning), `qwen3-vl:4b` (vision) |
+| Memory store | 1,224,900 vectors across 409 domains (PostgreSQL + pgvector) |
+| Scheduler | 54 tasks, 13,856 runs logged, 98.9% success rate |
+| Scripts | 359 total |
 
 ```mermaid
 graph LR
     NC["NovaControl :37400\n/api/nova/*\n/api/ai/*"] --> GW2["Nova Gateway v2\n127.0.0.1:18792\nPure Python asyncio"]
-    GW2 --> Ollama["Ollama :11434\nqwen3:30b-a3b"]
+    GW2 --> Ollama["Ollama :11434\nqwen3-next:80b"]
     GW2 --> PG["nova_ops PostgreSQL\ngateway_sessions\nagent_docs"]
 ```
 
@@ -195,9 +207,10 @@ A floating status window accessible from the menu bar icon. Tabs:
   process list.
 - **News** -- Unread breaking news from News Summary with source badges,
   category labels, and click-to-open in browser.
-- **Nova** -- AI service health grid (OpenClaw, Memory Server, Ollama,
+- **Nova** -- AI service health grid (Nova Gateway v2, Memory Server, Ollama,
   SwarmUI, ComfyUI, Nova-NextGen), Nova identity stats (model, memories,
-  sessions, gateway), and cron job health with error highlighting.
+  sessions, gateway), scheduler health (54 tasks, 98.9% success rate), and
+  cron job error highlighting.
 - **Health** -- Overall system banner (operational / degraded / outage),
   per-service traffic lights, local LLM inventory with backend badges
   (Ollama vs MLX), system pressure gauges (CPU, RAM, disk R/W), and an
@@ -533,7 +546,7 @@ NovaControl/
 |       +-- RsyncReader.swift          Reads sync jobs and history, can execute rsync
 |       +-- SystemStatsReader.swift    Mach host_statistics, vm_statistics64, IOKit disk I/O, ps
 |       +-- NewsSummaryReader.swift    Reads articles from JSON, filters by category/favorites
-|       +-- NovaReader.swift           Probes OpenClaw gateway/memory, Ollama, MLX, cron parsing
+|       +-- NovaReader.swift           Probes Nova Gateway v2/memory, Ollama, MLX, cron parsing
 |       +-- MLXCodeReader.swift        Proxies MLXCode HTTP API on port 37422
 |       +-- PlexReader.swift           Plex Media Server: status, now playing, on deck, recent, library
 |       +-- CalendarReader.swift       ICS/CalDAV feed parser: today, upcoming, events by date range
@@ -672,7 +685,7 @@ and POST to `/api/graph/ingest` to populate the database.
 - Menu bar app with 5-tab SwiftUI dashboard
 - OneOnOne, NMAPScanner, RsyncGUI, TopGUI, and News Summary readers
 - 60-second auto-refresh cycle
-- Nova/OpenClaw gateway and memory server probes
+- Nova gateway and memory server probes
 
 ---
 
