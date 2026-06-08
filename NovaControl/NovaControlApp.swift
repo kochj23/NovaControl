@@ -18,12 +18,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var statusWindow: NSWindow?
     let apiServer = NovaAPIServer.shared
     let dataManager = DataManager.shared
+    let actionItemObserver = ActionItemObserver.shared
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         setupMenuBar()
         apiServer.start()
         dataManager.startRefreshing()
+        actionItemObserver.start()
     }
 
     func setupMenuBar() {
