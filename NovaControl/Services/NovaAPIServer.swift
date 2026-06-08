@@ -322,10 +322,6 @@ final class NovaAPIServer {
             return handleDocs()
         }
 
-        // Content graph (stub — connect Neo4j for full implementation)
-        if method == "GET" && path == "/api/graph" {
-            return await handleContentGraph()
-        }
 
         // HomeKit routes (replaces HomeKitControl port 37432)
         if method == "GET" && path == "/api/homekit/scenes" {
@@ -367,24 +363,6 @@ final class NovaAPIServer {
             return await proxyToBigBrother(method: method, path: bbPath, body: body)
         }
 
-        // ── Plex routes ──────────────────────────────────────────────────────
-        if method == "GET" && path == "/api/plex/status" {
-            return await handlePlexStatus()
-        }
-        if method == "GET" && path == "/api/plex/playing" {
-            return await handlePlexPlaying()
-        }
-        if method == "GET" && path == "/api/plex/ondeck" {
-            let limit = Int(query["limit"] ?? "10") ?? 10
-            return await handlePlexOnDeck(limit: limit)
-        }
-        if method == "GET" && path == "/api/plex/recent" {
-            let limit = Int(query["limit"] ?? "10") ?? 10
-            return await handlePlexRecentlyAdded(limit: limit)
-        }
-        if method == "GET" && path == "/api/plex/library" {
-            return await handlePlexLibrary()
-        }
 
         // ── Synology routes ──────────────────────────────────────────────────
         if method == "GET" && path == "/api/synology/status" {
@@ -415,10 +393,6 @@ final class NovaAPIServer {
             return await handleCalendarEvents(days: days)
         }
 
-        // ── HealthKit routes ─────────────────────────────────────────────────
-        if method == "GET" && path == "/api/health/snapshot" {
-            return await handleHealthSnapshot()
-        }
 
         return (404, ["error": "Route not found", "path": path])
     }
@@ -722,7 +696,7 @@ final class NovaAPIServer {
         return (200, ["runs": list, "total": total])
     }
 
-    // MARK: - Documentation & Graph Handlers
+    // MARK: - Documentation Handler
 
     // GET /api/docs — OpenAPI 3.0 specification
     private func handleDocs() -> (Int, Any) {
@@ -735,7 +709,6 @@ final class NovaAPIServer {
                 "/api/health":                     endpoint("GET", "Comprehensive healthcheck with per-source checks"),
                 "/api/health/status":              endpointWithPost("GET", "POST", "Get / store manual health note"),
                 "/api/topology":                   endpoint("GET", "Service communication topology graph"),
-                "/api/graph":                      endpoint("GET", "Content relationship graph (Neo4j stub)"),
                 "/api/docs":                       endpoint("GET", "This OpenAPI specification"),
                 "/metrics":                        endpoint("GET", "Prometheus text metrics"),
                 "/api/oneonone/meetings":          endpoint("GET", "OneOnOne meetings (limit query param)"),
@@ -786,49 +759,6 @@ final class NovaAPIServer {
         ]
     }
 
-    // GET /api/graph — Content relationship graph (Neo4j integration stub)
-    // Full implementation: set up Neo4j and populate via /api/graph/ingest
-    private func handleContentGraph() async -> (Int, Any) {
-        let news    = await NewsSummaryReader.shared.fetchBreaking()
-        let devices = await NMAPReader.shared.fetchDevices()
-
-        // Build lightweight in-memory graph from available data.
-        // Neo4j integration: replace with Bolt protocol queries once server is running.
-        var nodes: [[String: Any]] = []
-        var edges: [[String: Any]] = []
-
-        // Service nodes
-        let serviceNodes = ["OneOnOne", "NMAPScanner", "RsyncGUI", "SystemStats", "NewsSummary", "Nova", "MLXCode"]
-        for name in serviceNodes {
-            nodes.append(["id": name, "type": "service", "label": name])
-        }
-
-        // News category nodes derived from live data
-        let categories = Set(news.map { $0.category })
-        for cat in categories {
-            let catId = "news:\(cat)"
-            nodes.append(["id": catId, "type": "news_category", "label": cat])
-            edges.append(["from": "NewsSummary", "to": catId, "relation": "contains"])
-        }
-
-        // Device type nodes
-        let deviceTypes = Set(devices.map { $0.deviceType })
-        for dt in deviceTypes.prefix(8) {
-            let dtId = "device:\(dt)"
-            nodes.append(["id": dtId, "type": "device_type", "label": dt])
-            edges.append(["from": "NMAPScanner", "to": dtId, "relation": "discovered"])
-        }
-
-        return (200, [
-            "nodes": nodes,
-            "edges": edges,
-            "nodeCount": nodes.count,
-            "edgeCount": edges.count,
-            "neo4jStatus": "not_connected",
-            "note": "Connect Neo4j (bolt://localhost:7687) and POST /api/graph/ingest to enable full graph queries.",
-            "generatedAt": ISO8601DateFormatter().string(from: Date())
-        ])
-    }
 
     // MARK: - New Feature Handlers
 
@@ -1172,32 +1102,6 @@ final class NovaAPIServer {
         })
     }
 
-    // MARK: - Plex Handlers
-
-    private func handlePlexStatus() async -> (Int, Any) {
-        let status = await PlexReader.shared.serverStatus()
-        return (200, status)
-    }
-
-    private func handlePlexPlaying() async -> (Int, Any) {
-        let sessions = await PlexReader.shared.nowPlaying()
-        return (200, ["sessions": sessions, "count": sessions.count])
-    }
-
-    private func handlePlexOnDeck(limit: Int) async -> (Int, Any) {
-        let items = await PlexReader.shared.onDeck(limit: limit)
-        return (200, ["items": items, "count": items.count])
-    }
-
-    private func handlePlexRecentlyAdded(limit: Int) async -> (Int, Any) {
-        let items = await PlexReader.shared.recentlyAdded(limit: limit)
-        return (200, ["items": items, "count": items.count])
-    }
-
-    private func handlePlexLibrary() async -> (Int, Any) {
-        let summary = await PlexReader.shared.librarySummary()
-        return (200, summary)
-    }
 
     // MARK: - Synology Handler
 
@@ -1323,44 +1227,4 @@ final class NovaAPIServer {
         return (200, ["events": encoded, "count": encoded.count, "days": days])
     }
 
-    // MARK: - HealthKit Handler
-
-    private func handleHealthSnapshot() async -> (Int, Any) {
-        // HealthKit on macOS requires either Mac App Store distribution or explicit
-        // Apple entitlement approval. For direct-distribution (DMG) apps, HealthKit
-        // is unavailable — serve cached data from the last iOS export if present.
-        let cachePath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".openclaw/private/health/latest.json")
-        if FileManager.default.fileExists(atPath: cachePath.path),
-           let data = try? Data(contentsOf: cachePath),
-           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            var result = json
-            result["source"] = "cached_ios_export"
-            return (200, result)
-        }
-
-        // Try native HealthKit (works if running in App Store distribution)
-        if #available(macOS 13.0, *) {
-            do {
-                let snapshot = try await HealthKitReader.shared.latestHealthSnapshot()
-                let encoder = JSONEncoder()
-                encoder.dateEncodingStrategy = .iso8601
-                guard let encoded = try? encoder.encode(snapshot),
-                      var dict = try? JSONSerialization.jsonObject(with: encoded) as? [String: Any] else {
-                    return (500, ["error": "Encoding failed"])
-                }
-                dict["source"] = "healthkit_native"
-                // Cache for other consumers
-                try? encoded.write(to: cachePath)
-                return (200, dict)
-            } catch {
-                // Fall through to not-available response
-            }
-        }
-
-        return (404, [
-            "error": "No health data available",
-            "hint": "HealthKit requires App Store distribution. For direct-distribution, export health data from iPhone via the Health app or use a HealthKit export app, which will write to ~/.openclaw/private/health/latest.json"
-        ])
-    }
 }
