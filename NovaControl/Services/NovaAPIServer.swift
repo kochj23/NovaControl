@@ -333,6 +333,9 @@ final class NovaAPIServer {
         if method == "GET" && path == "/api/homekit/accessories" {
             return await handleHomeKitAccessories()
         }
+        if method == "GET" && path == "/api/homekit/sensors" {
+            return await handleHomeKitSensorsViaShortcut()
+        }
         if method == "POST" && path == "/api/homekit/refresh" {
             return await handleHomeKitRefresh()
         }
@@ -945,6 +948,18 @@ final class NovaAPIServer {
     private func handleHomeKitRefresh() async -> (Int, Any) {
         let scenes = await HomeKitReader.shared.fetchScenes(forceRefresh: true)
         return (200, ["refreshed": true, "sceneCount": scenes.count])
+    }
+
+    private func handleHomeKitSensorsViaShortcut() async -> (Int, Any) {
+        let output = await HomeKitReader.shared.runSensorShortcut()
+        if output.isEmpty {
+            return (503, ["error": "Shortcut 'Nova HomeKit Sensors' not found or returned empty. Create it in the Shortcuts app.", "sensors": []] as [String: Any])
+        }
+        guard let data = output.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) else {
+            return (200, ["sensors": [], "raw": output, "note": "Could not parse as JSON"] as [String: Any])
+        }
+        return (200, ["sensors": json, "count": (json as? [Any])?.count ?? 0] as [String: Any])
     }
 
     // MARK: - AI Summarization Handlers

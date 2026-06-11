@@ -124,6 +124,10 @@ actor HomeKitReader {
         }
     }
 
+    func runSensorShortcut() async -> String {
+        await runShortcut("Nova HomeKit Sensors")
+    }
+
     var isAvailable: Bool {
         FileManager.default.fileExists(atPath: "/usr/bin/shortcuts")
     }
