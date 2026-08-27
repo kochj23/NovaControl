@@ -38,11 +38,25 @@ actor NMAPReader {
         return (try? decoder.decode([ThreatFinding].self, from: data)) ?? []
     }
 
+    // Only accept a bare IPv4/IPv6 address or CIDR range. Reject anything that could be
+    // interpreted as an nmap option (leading '-') or that contains shell/argument
+    // metacharacters — this closes the argument-injection hole on the /api/nmap/scan route.
+    private static func isValidScanTarget(_ ip: String) -> Bool {
+        guard !ip.isEmpty, !ip.hasPrefix("-") else { return false }
+        let pattern = "^(?:\\d{1,3}(?:\\.\\d{1,3}){3}(?:/\\d{1,2})?|[0-9A-Fa-f:]+(?:/\\d{1,3})?)$"
+        guard let re = try? NSRegularExpression(pattern: pattern) else { return false }
+        return re.firstMatch(in: ip, range: NSRange(ip.startIndex..., in: ip)) != nil
+    }
+
     func runScan(ip: String) async -> String {
-        // Run nmap directly — requires nmap installed via homebrew
+        guard Self.isValidScanTarget(ip) else {
+            return "Invalid scan target: \(ip)"
+        }
+        // Run nmap directly — requires nmap installed via homebrew.
+        // "--" ends option parsing so the target can never be treated as a flag.
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = ["nmap", "-sn", ip]
+        process.arguments = ["nmap", "-sn", "--", ip]
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = pipe
