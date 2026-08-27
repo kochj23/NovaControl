@@ -113,11 +113,15 @@ final class NovaAPIServer {
 
         // Parse request headers
         var ifNoneMatch: String?
+        var authorization: String?
+        var hostHeader: String?
         for line in lines.dropFirst() where !line.isEmpty {
             guard let colonIdx = line.firstIndex(of: ":") else { continue }
             let key = String(line[..<colonIdx]).lowercased().trimmingCharacters(in: .whitespaces)
             let value = String(line[line.index(after: colonIdx)...]).trimmingCharacters(in: .whitespaces)
             if key == "if-none-match" { ifNoneMatch = value }
+            else if key == "authorization" { authorization = value }
+            else if key == "host" { hostHeader = value }
         }
 
         // Parse body for POST requests
@@ -131,15 +135,65 @@ final class NovaAPIServer {
 
         // Route the request
         route(method: method, path: path, query: queryParams, body: body,
-              ifNoneMatch: ifNoneMatch, connection: connection)
+              ifNoneMatch: ifNoneMatch, authorization: authorization,
+              host: hostHeader, connection: connection)
+    }
+
+    // MARK: - Authentication
+
+    // Loopback is NOT an authentication boundary: any website the user visits can
+    // issue requests to 127.0.0.1. Every request must therefore carry the app's
+    // bearer token, and the Host header must be a loopback name (DNS-rebinding guard).
+    // The expected token is provisioned out-of-band (env var or a file written by the
+    // installer); if it is unset we fail closed and reject all requests.
+    private lazy var apiToken: String = Self.loadAPIToken()
+
+    private static func loadAPIToken() -> String {
+        if let env = ProcessInfo.processInfo.environment["NOVACONTROL_API_TOKEN"], !env.isEmpty {
+            return env
+        }
+        let url = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".config/nova/novacontrol-token")
+        if let tok = try? String(contentsOf: url, encoding: .utf8) {
+            let trimmed = tok.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty { return trimmed }
+        }
+        NSLog("[NovaAPIServer] WARNING: no API token configured — all requests will be rejected")
+        return ""
+    }
+
+    private func isAuthorized(_ authorization: String?) -> Bool {
+        let expected = apiToken
+        guard !expected.isEmpty else { return false }   // fail closed
+        guard let header = authorization, header.hasPrefix("Bearer ") else { return false }
+        let presented = Array(String(header.dropFirst("Bearer ".count)).utf8)
+        let expectedBytes = Array(expected.utf8)
+        guard presented.count == expectedBytes.count else { return false }
+        var diff: UInt8 = 0
+        for i in 0..<expectedBytes.count { diff |= presented[i] ^ expectedBytes[i] }
+        return diff == 0
+    }
+
+    private static func isAllowedHost(_ host: String?) -> Bool {
+        guard let host = host?.lowercased() else { return false }
+        let name = host.split(separator: ":").first.map(String.init) ?? host
+        return name == "127.0.0.1" || name == "localhost"
     }
 
     // MARK: - Router
 
     private func route(method: String, path: String, query: [String: String],
-                       body: Data?, ifNoneMatch: String?, connection: NWConnection) {
-        if method == "OPTIONS" {
-            sendResponse(connection: connection, status: 200, body: Data())
+                       body: Data?, ifNoneMatch: String?, authorization: String?,
+                       host: String?, connection: NWConnection) {
+        // DNS-rebinding protection: only serve requests addressed to a loopback host.
+        guard Self.isAllowedHost(host) else {
+            sendError(connection: connection, status: 403, message: "Forbidden host")
+            return
+        }
+
+        // Require the app's bearer token on every route (data reads and state changes alike).
+        guard isAuthorized(authorization) else {
+            sendError(connection: connection, status: 401, message: "Unauthorized")
             return
         }
 
@@ -1085,6 +1139,8 @@ final class NovaAPIServer {
         case 207: statusText = "Multi-Status"
         case 304: statusText = "Not Modified"
         case 400: statusText = "Bad Request"
+        case 401: statusText = "Unauthorized"
+        case 403: statusText = "Forbidden"
         case 404: statusText = "Not Found"
         case 500: statusText = "Internal Server Error"
         case 503: statusText = "Service Unavailable"
@@ -1095,9 +1151,6 @@ final class NovaAPIServer {
             "HTTP/1.1 \(status) \(statusText)",
             "Content-Type: \(contentType); charset=utf-8",
             "Content-Length: \(body.count)",
-            "Access-Control-Allow-Origin: *",
-            "Access-Control-Allow-Methods: GET, POST, OPTIONS",
-            "Access-Control-Allow-Headers: Content-Type, If-None-Match",
             "Connection: close",
         ]
         for (key, value) in extraHeaders {
